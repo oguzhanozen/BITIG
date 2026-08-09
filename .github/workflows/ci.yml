@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality-and-security:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.16.0
+          cache: npm
+
+      - name: Set up Rust
+        shell: pwsh
+        run: |
+          rustup toolchain install 1.88.0 --profile minimal --component rustfmt,clippy
+          rustup default 1.88.0
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Verify pinned sidecars
+        run: |
+          npm run sidecars:fetch
+          npm run sidecars:verify
+
+      - name: Verify corresponding source availability
+        shell: pwsh
+        run: ./scripts/fetch-corresponding-sources.ps1 -OutputDirectory "$env:RUNNER_TEMP\corresponding-source"
+
+      - name: Frontend checks
+        run: |
+          npm run typecheck
+          npm run lint
+          npm test
+          npm run build
+
+      - name: Rust formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+
+      - name: Rust lint
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml --all-targets
+
+      - name: npm vulnerability audit
+        run: npm audit --audit-level=high
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --version 0.22.2 --locked
+
+      - name: Rust vulnerability audit
+        run: cargo audit --file src-tauri/Cargo.lock

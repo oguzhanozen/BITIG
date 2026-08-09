@@ -18,8 +18,10 @@
     "test": "vitest run",
     "sidecars:fetch": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fetch-sidecars.ps1",
     "sidecars:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-sidecars.ps1",
+    "sources:fetch": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fetch-corresponding-sources.ps1",
     "licenses:rust": "cargo about generate scripts/rust-licenses.hbs --config about.toml --manifest-path src-tauri/Cargo.toml --locked --output-file licenses/Rust-THIRD-PARTY-NOTICES.txt",
     "tauri:build": "npm run sidecars:verify && tauri build --config src-tauri/tauri.release.conf.json",
+    "tauri:build:signed": "npm run sidecars:verify && tauri build --config src-tauri/tauri.signed-release.conf.json",
     "tauri": "tauri"
   },
   "dependencies": {
