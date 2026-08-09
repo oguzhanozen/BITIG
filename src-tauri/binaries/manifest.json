@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "artifacts": [
+    {
+      "name": "yt-dlp",
+      "target": "x86_64-pc-windows-msvc",
+      "version": "2026.07.04",
+      "sourceUrl": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.07.04/yt-dlp.exe",
+      "sourceCodeUrl": "https://github.com/yt-dlp/yt-dlp/tree/2026.07.04",
+      "thirdPartyNoticesUrl": "https://github.com/yt-dlp/yt-dlp/blob/2026.07.04/THIRD_PARTY_LICENSES.txt",
+      "license": "Unlicense; bundled third-party notices",
+      "sha256": "52fe3c26dcf71fbdc85b528589020bb0b8e383155cfa81b64dd447bbe35e24b8"
+    },
+    {
+      "name": "ffmpeg",
+      "target": "x86_64-pc-windows-msvc",
+      "version": "9.0 essentials build",
+      "sourceUrl": "https://github.com/GyanD/codexffmpeg/releases/download/9.0/ffmpeg-9.0-essentials_build.zip",
+      "sourceCodeUrl": "https://github.com/FFmpeg/FFmpeg/commit/d32b387f2b",
+      "buildInformationUrl": "https://www.gyan.dev/ffmpeg/builds/",
+      "license": "GPL-3.0",
+      "sha256": "227af0691433b703ffc5725e47f7d06eefc34b4a72e7870e73d30e2cda483ecf"
+    },
+    {
+      "name": "ffprobe",
+      "target": "x86_64-pc-windows-msvc",
+      "version": "9.0 essentials build",
+      "sourceUrl": "https://github.com/GyanD/codexffmpeg/releases/download/9.0/ffmpeg-9.0-essentials_build.zip",
+      "sourceCodeUrl": "https://github.com/FFmpeg/FFmpeg/commit/d32b387f2b",
+      "buildInformationUrl": "https://www.gyan.dev/ffmpeg/builds/",
+      "license": "GPL-3.0",
+      "sha256": "901f0efe4793cbb0f017101e3427f816e8fbf9a407bd585f49df30f4325cfd88"
+    }
+  ]
+}

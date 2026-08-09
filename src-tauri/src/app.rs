@@ -1,0 +1,46 @@
+use std::sync::Arc;
+
+use tauri::AppHandle;
+
+use crate::{
+    database,
+    downloader::ToolPaths,
+    errors::AppResult,
+    repositories::{FolderRepository, MediaRepository},
+    services::{
+        DownloadManager, FolderService, LibraryService, MediaAnalysisService, ToolStatusService,
+    },
+    storage::AppPaths,
+};
+
+pub struct AppState {
+    pub folders: FolderService,
+    pub library: LibraryService,
+    pub analysis: MediaAnalysisService,
+    pub downloads: DownloadManager,
+    pub tool_status: ToolStatusService,
+}
+
+impl AppState {
+    pub async fn initialize(app: &AppHandle) -> AppResult<Self> {
+        let paths = AppPaths::initialize(app).await?;
+        let pool = database::connect(&paths.database).await?;
+        database::recover_interrupted_downloads(&pool).await?;
+        paths.cleanup_stale_temp().await?;
+        let tools = ToolPaths::discover_and_verify().await?;
+
+        let folders = Arc::new(FolderRepository::new(pool.clone()));
+        let media = Arc::new(MediaRepository::new(pool.clone()));
+        let analysis = MediaAnalysisService::new(pool.clone(), tools.yt_dlp.clone());
+        let downloads =
+            DownloadManager::new(app.clone(), analysis.clone(), pool, paths.clone(), tools);
+
+        Ok(Self {
+            folders: FolderService::new(folders),
+            library: LibraryService::new(media, paths),
+            analysis,
+            downloads,
+            tool_status: ToolStatusService::new()?,
+        })
+    }
+}

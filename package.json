@@ -1,0 +1,46 @@
+{
+  "name": "bitig",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oguzhanozen/BITIG.git"
+  },
+  "bugs": "https://github.com/oguzhanozen/BITIG/issues",
+  "homepage": "https://github.com/oguzhanozen/BITIG#readme",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --pretty false",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "sidecars:fetch": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fetch-sidecars.ps1",
+    "sidecars:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-sidecars.ps1",
+    "licenses:rust": "cargo about generate scripts/rust-licenses.hbs --config about.toml --manifest-path src-tauri/Cargo.toml --locked --output-file licenses/Rust-THIRD-PARTY-NOTICES.txt",
+    "tauri:build": "npm run sidecars:verify && tauri build --config src-tauri/tauri.release.conf.json",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/plugin-dialog": "2.7.2",
+    "@tauri-apps/plugin-opener": "2.5.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@tauri-apps/cli": "2.11.4",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "6.0.5",
+    "eslint": "10.8.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.3",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.66.0",
+    "vite": "8.2.1",
+    "vitest": "4.1.10"
+  }
+}
