@@ -87,15 +87,20 @@ impl MediaExtractor for YtDlpExtractor {
             .await?;
 
         if !output.success {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            tracing::warn!(stderr = %truncate_for_log(&stderr), "yt-dlp analysis failed");
+            tracing::warn!(
+                "yt-dlp analysis failed; subprocess output withheld to protect URL credentials"
+            );
             return Err(AppError::Analysis("yt-dlp exited unsuccessfully".into()));
         }
-        serde_json::from_slice(&output.stdout).map_err(|error| {
-            tracing::warn!(%error, "yt-dlp returned invalid JSON");
-            AppError::Analysis("invalid metadata response".into())
-        })
+        parse_analysis_output(&output.stdout)
     }
+}
+
+fn parse_analysis_output(bytes: &[u8]) -> AppResult<ExtractedMedia> {
+    serde_json::from_slice(bytes).map_err(|error| {
+        tracing::warn!(%error, "yt-dlp returned invalid JSON");
+        AppError::Analysis("invalid metadata response".into())
+    })
 }
 
 fn analysis_args(url: &str) -> Vec<OsString> {
@@ -113,13 +118,9 @@ fn analysis_args(url: &str) -> Vec<OsString> {
     .collect()
 }
 
-fn truncate_for_log(value: &str) -> String {
-    value.chars().take(1_000).collect()
-}
-
 #[cfg(test)]
 mod tests {
-    use super::analysis_args;
+    use super::{analysis_args, parse_analysis_output};
 
     #[test]
     fn analysis_ignores_user_configuration_and_does_not_select_a_format() {
@@ -134,5 +135,19 @@ mod tests {
                 .iter()
                 .any(|value| value == "-f" || value == "--format")
         );
+    }
+
+    #[test]
+    fn malformed_or_truncated_json_is_rejected() {
+        assert!(parse_analysis_output(br#"{"id":"x""#).is_err());
+        assert!(parse_analysis_output(b"not-json").is_err());
+        assert!(parse_analysis_output(b"null").is_err());
+    }
+
+    #[test]
+    fn minimal_valid_json_is_accepted() {
+        let media = parse_analysis_output(br#"{"id":"x","title":"Example"}"#).unwrap();
+        assert_eq!(media.id, "x");
+        assert!(media.formats.is_empty());
     }
 }

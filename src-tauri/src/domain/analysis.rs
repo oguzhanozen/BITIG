@@ -43,6 +43,7 @@ pub enum DownloadStrategy {
 #[derive(Clone, Debug)]
 pub struct ResolvedDownload {
     pub source_url: String,
+    pub download_url: String,
     pub analysis: MediaAnalysis,
     pub option: DownloadOption,
     pub strategy: DownloadStrategy,

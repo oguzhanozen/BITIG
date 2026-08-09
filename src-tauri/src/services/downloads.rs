@@ -286,7 +286,7 @@ impl DownloadManager {
             "-o".into(),
             job_dir.join("output.%(ext)s").into_os_string(),
             "--".into(),
-            resolved.source_url.clone().into(),
+            resolved.download_url.clone().into(),
         ]);
         let (line_sender, mut line_receiver) = mpsc::unbounded_channel::<String>();
         let manager = self.clone();
@@ -336,7 +336,9 @@ impl DownloadManager {
         }
         let output = output?;
         if !output.success {
-            tracing::warn!(stderr = %limited_log(&output.stderr), "yt-dlp download failed");
+            tracing::warn!(
+                "yt-dlp download failed; subprocess output withheld to protect URL credentials"
+            );
             return Err(AppError::Download("yt-dlp exited unsuccessfully".into()));
         }
         Ok(())
@@ -565,10 +567,6 @@ fn parse_progress_line(line: &str) -> Option<ProgressUpdate> {
 fn parse_positive_number(value: &str) -> Option<i64> {
     let value = value.trim().parse::<f64>().ok()?;
     (value.is_finite() && value >= 0.0 && value <= i64::MAX as f64).then_some(value as i64)
-}
-
-fn limited_log(bytes: &[u8]) -> String {
-    String::from_utf8_lossy(bytes).chars().take(1_000).collect()
 }
 
 #[cfg(test)]

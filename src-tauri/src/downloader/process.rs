@@ -17,10 +17,10 @@ pub struct ProcessSpec {
     pub stderr_limit: u64,
 }
 
+#[derive(Debug)]
 pub struct ProcessOutput {
     pub success: bool,
     pub stdout: Vec<u8>,
-    pub stderr: Vec<u8>,
 }
 
 #[derive(Clone, Default)]
@@ -111,7 +111,7 @@ impl BoundedProcessRunner {
 
         let outcome = {
             let operation = async {
-                let (stdout, stderr, status) = tokio::try_join!(
+                let (stdout, _, status) = tokio::try_join!(
                     read_limited(stdout, spec.stdout_limit, lines.clone()),
                     read_limited(stderr, spec.stderr_limit, lines),
                     async { child.wait().await.map_err(AppError::from) }
@@ -119,7 +119,6 @@ impl BoundedProcessRunner {
                 Ok::<_, AppError>(ProcessOutput {
                     success: status.success(),
                     stdout,
-                    stderr,
                 })
             };
             tokio::pin!(operation);
@@ -177,4 +176,44 @@ async fn read_limited(
         }
     }
     Ok(output)
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::{BoundedProcessRunner, CancellationToken, ProcessSpec};
+    use crate::errors::AppError;
+    use std::{ffi::OsString, path::PathBuf, time::Duration};
+
+    fn slow_process(timeout: Duration) -> ProcessSpec {
+        ProcessSpec {
+            program: PathBuf::from("ping.exe"),
+            args: ["-n", "6", "127.0.0.1"]
+                .into_iter()
+                .map(OsString::from)
+                .collect(),
+            timeout,
+            stdout_limit: 64 * 1024,
+            stderr_limit: 64 * 1024,
+        }
+    }
+
+    #[tokio::test]
+    async fn process_timeout_terminates_the_child() {
+        let error = BoundedProcessRunner
+            .run(slow_process(Duration::from_millis(20)))
+            .await
+            .unwrap_err();
+        assert!(matches!(error, AppError::ProcessTimeout));
+    }
+
+    #[tokio::test]
+    async fn cancellation_terminates_the_child() {
+        let cancellation = CancellationToken::default();
+        cancellation.cancel();
+        let error = BoundedProcessRunner
+            .run_cancellable(slow_process(Duration::from_secs(10)), cancellation)
+            .await
+            .unwrap_err();
+        assert!(matches!(error, AppError::Cancelled));
+    }
 }

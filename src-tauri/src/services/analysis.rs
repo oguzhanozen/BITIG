@@ -6,7 +6,7 @@ use std::{
 
 use sqlx::SqlitePool;
 use tokio::sync::RwLock;
-use url::Url;
+use url::{Host, Url};
 use uuid::Uuid;
 
 use crate::{
@@ -25,6 +25,7 @@ struct AnalysisStore {
 
 struct AnalysisSession {
     source_url: String,
+    download_url: String,
     analysis: MediaAnalysis,
     strategies: HashMap<String, DownloadStrategy>,
 }
@@ -70,7 +71,8 @@ impl MediaAnalysisService {
         store.sessions.insert(
             analysis_id,
             AnalysisSession {
-                source_url: url.into(),
+                source_url: sanitize_url_for_storage(&url),
+                download_url: url.into(),
                 analysis: analysis.clone(),
                 strategies,
             },
@@ -103,6 +105,7 @@ impl MediaAnalysisService {
             .ok_or_else(|| AppError::Validation("download option has expired".into()))?;
         Ok(ResolvedDownload {
             source_url: session.source_url.clone(),
+            download_url: session.download_url.clone(),
             analysis: session.analysis.clone(),
             option,
             strategy,
@@ -119,10 +122,88 @@ fn validate_url(input: &str) -> AppResult<Url> {
         || url.host_str().is_none()
         || !url.username().is_empty()
         || url.password().is_some()
+        || is_local_host(&url)
     {
         return Err(AppError::InvalidUrl);
     }
     Ok(url)
+}
+
+fn is_local_host(url: &Url) -> bool {
+    match url.host() {
+        Some(Host::Domain(host)) => {
+            let host = host.trim_end_matches('.').to_ascii_lowercase();
+            host == "localhost" || host.ends_with(".localhost") || host.ends_with(".local")
+        }
+        Some(Host::Ipv4(address)) => {
+            address.is_private()
+                || address.is_loopback()
+                || address.is_link_local()
+                || address.is_broadcast()
+                || address.is_unspecified()
+                || address.is_multicast()
+        }
+        Some(Host::Ipv6(address)) => {
+            let first = address.segments()[0];
+            address.is_loopback()
+                || address.is_unspecified()
+                || address.is_multicast()
+                || (first & 0xfe00) == 0xfc00
+                || (first & 0xffc0) == 0xfe80
+        }
+        None => true,
+    }
+}
+
+fn sanitize_url_for_storage(url: &Url) -> String {
+    let retained: Vec<(String, String)> = url
+        .query_pairs()
+        .filter(|(name, _)| !is_sensitive_query_parameter(name))
+        .map(|(name, value)| (name.into_owned(), value.into_owned()))
+        .collect();
+    let mut sanitized = url.clone();
+    sanitized.set_fragment(None);
+    sanitized.set_query(None);
+    if !retained.is_empty() {
+        sanitized
+            .query_pairs_mut()
+            .extend_pairs(retained.iter().map(|(name, value)| (name, value)));
+    }
+    sanitized.into()
+}
+
+fn is_sensitive_query_parameter(name: &str) -> bool {
+    let name = name.to_ascii_lowercase().replace('_', "-");
+    name.contains("token")
+        || name.contains("signature")
+        || name.contains("credential")
+        || matches!(
+            name.as_str(),
+            "auth"
+                | "authorization"
+                | "sig"
+                | "key"
+                | "api-key"
+                | "secret"
+                | "client-secret"
+                | "password"
+                | "passwd"
+                | "session"
+                | "sessionid"
+                | "jwt"
+                | "expire"
+                | "expires"
+                | "policy"
+                | "key-pair-id"
+                | "x-amz-algorithm"
+                | "x-amz-date"
+                | "x-amz-expires"
+                | "x-amz-signedheaders"
+                | "x-goog-algorithm"
+                | "x-goog-date"
+                | "x-goog-expires"
+                | "x-goog-signedheaders"
+        )
 }
 
 fn normalize(
@@ -270,6 +351,10 @@ fn safe_format_id(value: &str) -> bool {
         && value.len() <= 80
         && value
             .bytes()
+            .next()
+            .is_some_and(|byte| byte.is_ascii_alphanumeric())
+        && value
+            .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
 }
 
@@ -314,11 +399,17 @@ fn merged_container(video: &ExtractedFormat, audio: Option<&ExtractedFormat>) ->
 
 #[cfg(test)]
 mod tests {
-    use super::{normalize, validate_url};
-    use crate::{
-        domain::{DownloadStrategy, MediaKind},
-        downloader::{ExtractedFormat, ExtractedMedia},
+    use super::{
+        AnalysisSession, AnalysisStore, MediaAnalysisService, normalize, safe_format_id,
+        sanitize_url_for_storage, validate_url,
     };
+    use crate::{
+        domain::{DownloadOption, DownloadStrategy, MediaAnalysis, MediaKind},
+        downloader::{ExtractedFormat, ExtractedMedia, YtDlpExtractor},
+    };
+    use sqlx::SqlitePool;
+    use std::{collections::HashMap, path::PathBuf, sync::Arc};
+    use tokio::sync::RwLock;
 
     fn format(
         id: &str,
@@ -345,7 +436,100 @@ mod tests {
     fn url_validation_blocks_shell_like_and_credential_urls() {
         assert!(validate_url("https://example.com/watch?v=1&x=2").is_ok());
         assert!(validate_url("file:///etc/passwd").is_err());
+        assert!(validate_url("ftp://example.com/video").is_err());
+        assert!(validate_url("https://localhost/video").is_err());
+        assert!(validate_url("http://127.0.0.1/video").is_err());
+        assert!(validate_url("http://[::1]/video").is_err());
         assert!(validate_url("https://user:pass@example.com/video").is_err());
+        assert!(validate_url(&format!("https://example.com/{}", "x".repeat(4_096))).is_err());
+    }
+
+    #[test]
+    fn storage_url_removes_secrets_and_fragment_but_keeps_media_identity() {
+        let url = validate_url(
+            "https://example.com/watch?v=abc&access_token=secret&X-Amz-Signature=signed&credential=user#private",
+        )
+        .unwrap();
+        assert_eq!(
+            sanitize_url_for_storage(&url),
+            "https://example.com/watch?v=abc"
+        );
+    }
+
+    #[test]
+    fn format_ids_reject_option_injection_and_malformed_values() {
+        assert!(safe_format_id("137-mp4"));
+        assert!(!safe_format_id("--exec"));
+        assert!(!safe_format_id("137+140"));
+        assert!(!safe_format_id("137 --output C:\\temp\\x"));
+        assert!(!safe_format_id(&"a".repeat(81)));
+    }
+
+    #[tokio::test]
+    async fn download_resolution_rejects_unknown_or_malformed_option_ids() {
+        let option = DownloadOption {
+            id: "opaque-option-id".into(),
+            kind: MediaKind::Video,
+            resolution: Some(720),
+            fps: Some(30.0),
+            container: "mp4".into(),
+            estimated_size: None,
+        };
+        let analysis = MediaAnalysis {
+            analysis_id: "analysis-id".into(),
+            title: "Example".into(),
+            source_platform: "Example".into(),
+            source_id: "source-id".into(),
+            creator: None,
+            thumbnail_url: None,
+            duration_ms: None,
+            existing_versions: 0,
+            options: vec![option],
+        };
+        let strategies = HashMap::from([(
+            "opaque-option-id".into(),
+            DownloadStrategy::Video {
+                video_format_id: "137".into(),
+                audio_format_id: None,
+                container: "mp4".into(),
+            },
+        )]);
+        let store = AnalysisStore {
+            sessions: HashMap::from([(
+                "analysis-id".into(),
+                AnalysisSession {
+                    source_url: "https://example.com/watch?v=1".into(),
+                    download_url: "https://example.com/watch?v=1&token=secret".into(),
+                    analysis,
+                    strategies,
+                },
+            )]),
+            order: Default::default(),
+        };
+        let service = MediaAnalysisService {
+            extractor: Arc::new(YtDlpExtractor::new(PathBuf::from("unused"))),
+            store: Arc::new(RwLock::new(store)),
+            pool: SqlitePool::connect_lazy("sqlite::memory:").unwrap(),
+        };
+
+        assert!(
+            service
+                .resolve_download("analysis-id", "--exec")
+                .await
+                .is_err()
+        );
+        assert!(
+            service
+                .resolve_download("analysis-id", "missing")
+                .await
+                .is_err()
+        );
+        let resolved = service
+            .resolve_download("analysis-id", "opaque-option-id")
+            .await
+            .unwrap();
+        assert_eq!(resolved.source_url, "https://example.com/watch?v=1");
+        assert!(resolved.download_url.contains("token=secret"));
     }
 
     #[test]

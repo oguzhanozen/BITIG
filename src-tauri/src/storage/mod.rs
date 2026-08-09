@@ -109,7 +109,14 @@ mod tests {
     #[test]
     fn rejects_parent_traversal_and_absolute_paths() {
         assert!(paths().resolve_managed("../secret").is_err());
+        assert!(paths().resolve_managed("media/../../secret").is_err());
+        assert!(paths().resolve_managed("..\\secret").is_err());
         assert!(paths().resolve_managed("C:\\secret").is_err());
+        assert!(
+            paths()
+                .resolve_managed("\\\\server\\share\\secret")
+                .is_err()
+        );
     }
 
     #[test]
@@ -120,5 +127,32 @@ mod tests {
         ));
         assert!(!is_temp_job_name("notes"));
         assert!(!is_temp_job_name("../media"));
+    }
+
+    #[tokio::test]
+    async fn stale_cleanup_removes_only_owned_job_entries() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().to_path_buf();
+        let temp = root.join("temp");
+        tokio::fs::create_dir_all(&temp).await.unwrap();
+        let job_id = "018f0c30-7b14-7cc1-8db7-5d2c557f74cf";
+        tokio::fs::create_dir_all(temp.join(job_id)).await.unwrap();
+        tokio::fs::write(temp.join(job_id).join("partial.bin"), b"partial")
+            .await
+            .unwrap();
+        tokio::fs::write(temp.join("notes"), b"keep").await.unwrap();
+        let app_paths = AppPaths {
+            database: root.join("library.db"),
+            media: root.join("media"),
+            thumbnails: root.join("thumbnails"),
+            temp: temp.clone(),
+            logs: root.join("logs"),
+            root: Arc::new(root),
+        };
+
+        app_paths.cleanup_stale_temp().await.unwrap();
+
+        assert!(!temp.join(job_id).exists());
+        assert!(temp.join("notes").exists());
     }
 }
