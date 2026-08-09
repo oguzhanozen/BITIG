@@ -1,6 +1,6 @@
 [package]
 name = "bitig"
-version = "0.1.0"
+version = "0.1.1"
 description = "A managed desktop media library"
 authors = ["BITIG contributors"]
 license = "MIT"

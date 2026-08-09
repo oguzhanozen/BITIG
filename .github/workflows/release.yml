@@ -41,35 +41,8 @@ jobs:
         shell: pwsh
         run: ./scripts/fetch-corresponding-sources.ps1 -OutputDirectory "$env:RUNNER_TEMP\release\corresponding-source"
 
-      - name: Prepare mandatory Windows code-signing certificate
-        shell: pwsh
-        env:
-          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE) -or [string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_PASSWORD)) {
-            throw "WINDOWS_CERTIFICATE and WINDOWS_CERTIFICATE_PASSWORD secrets are required for releases"
-          }
-          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\bitig-code-signing.pfx", [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
-
-      - name: Build signed Windows x64 installer
-        env:
-          WINDOWS_CERTIFICATE_PATH: ${{ runner.temp }}\bitig-code-signing.pfx
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-        run: npm run tauri:build:signed
-
-      - name: Verify Authenticode signatures
-        shell: pwsh
-        run: |
-          $installers = @(Get-ChildItem -LiteralPath "src-tauri\target\release\bundle\nsis" -Filter "BITIG_*_x64-setup.exe" -File)
-          if ($installers.Count -ne 1) { throw "Expected exactly one NSIS installer, found $($installers.Count)" }
-          $installer = $installers[0]
-          foreach ($path in @("src-tauri\target\release\bitig.exe", $installer.FullName)) {
-            $signature = Get-AuthenticodeSignature -LiteralPath $path
-            if ($signature.Status -ne "Valid") {
-              throw "Invalid Authenticode signature for $path: $($signature.Status)"
-            }
-          }
+      - name: Build unsigned Windows x64 installer
+        run: npm run tauri:build
 
       - name: Collect artifacts and checksums
         shell: pwsh
@@ -85,6 +58,8 @@ jobs:
         uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
         with:
           fail_on_unmatched_files: true
+          generate_release_notes: true
+          name: BITIG ${{ github.ref_name }}
           files: |
             ${{ runner.temp }}/release/BITIG_*_x64-setup.exe
             ${{ runner.temp }}/release/SHA256SUMS.txt

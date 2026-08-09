@@ -31,7 +31,7 @@ Frontend-only development is available with `npm run dev`, although Tauri comman
 
 Windows x64 release sidecars are pinned and checksum-verified through `src-tauri/binaries/manifest.json`. Executables are intentionally excluded from Git because the FFmpeg files exceed GitHub's single-file limit. Run `npm run sidecars:fetch` and then `npm run tauri:build` to create the NSIS installer. Other target platforms must provide their matching verified binaries as described in `docs/development/sidecars.md`.
 
-Local `tauri:build` output is unsigned and intended for development. Tag-triggered GitHub releases use `tauri:build:signed`, require the `WINDOWS_CERTIFICATE` (base64 PFX) and `WINDOWS_CERTIFICATE_PASSWORD` repository secrets, verify Authenticode on both the application executable and NSIS installer, and fail closed when signing is unavailable.
+Windows release installers are currently published without Authenticode code signing. Windows SmartScreen may therefore show a warning for newly downloaded installers. Release artifacts and corresponding-source archives remain protected by the published SHA-256 checksum file.
 
 ## Quality checks
 
