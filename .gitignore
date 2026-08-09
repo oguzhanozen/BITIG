@@ -1,0 +1,17 @@
+node_modules/
+dist/
+target/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/binaries/*.exe
+release/
+coverage/
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+*.log
+*.pdb
+.DS_Store
+Thumbs.db

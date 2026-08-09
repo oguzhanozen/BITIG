@@ -1,0 +1,44 @@
+FFmpeg 9.0 Essentials Build — Source and Build Information
+===========================================================
+
+BITIG for Windows bundles unmodified ffmpeg.exe and ffprobe.exe files from the
+Gyan FFmpeg 9.0 essentials build. The binaries are separate programs invoked
+as subprocesses. They are licensed under GNU GPL version 3; the complete GPLv3
+text is included as FFmpeg-GPLv3.txt.
+
+Binary release and build provenance:
+https://github.com/GyanD/codexffmpeg/releases/tag/9.0
+
+Exact FFmpeg source revision identified by the binary distributor:
+https://github.com/FFmpeg/FFmpeg/commit/d32b387f2b
+
+Downloadable source archive for that revision:
+https://github.com/FFmpeg/FFmpeg/archive/d32b387f2b.zip
+
+Build provider information, dependency list, and current build documentation:
+https://www.gyan.dev/ffmpeg/builds/
+
+The distributed files report:
+
+ffmpeg version 9.0-essentials_build-www.gyan.dev
+built with gcc 16.1.0 (Rev2, Built by MSYS2 project)
+
+Configuration:
+--enable-gpl --enable-version3 --enable-static --disable-w32threads
+--disable-autodetect --enable-cairo --enable-fontconfig --enable-iconv
+--enable-gnutls --enable-libxml2 --enable-gmp --enable-bzlib --enable-lzma
+--enable-zlib --enable-libsrt --enable-libssh --enable-libzmq
+--enable-avisynth --enable-sdl2 --enable-libwebp --enable-libx264
+--enable-libx265 --enable-libxvid --enable-libaom --enable-libopenjpeg
+--enable-libvpx --enable-mediafoundation --enable-libass
+--enable-libfreetype --enable-libfribidi --enable-libharfbuzz
+--enable-libvidstab --enable-libvmaf --enable-libzimg --enable-amf
+--enable-cuda-llvm --enable-cuvid --enable-dxva2 --enable-d3d11va
+--enable-d3d12va --enable-ffnvcodec --enable-libvpl --enable-nvdec
+--enable-nvenc --enable-vaapi --enable-openal --enable-libgme
+--enable-libopenmpt --enable-libopencore-amrwb --enable-libmp3lame
+--enable-libtheora --enable-libvo-amrwbenc --enable-libgsm
+--enable-libopencore-amrnb --enable-libopus --enable-libspeex
+--enable-libvorbis --enable-librubberband
+
+No BITIG patch is applied to FFmpeg or to the bundled Gyan binaries.
