@@ -31,11 +31,24 @@ foreach ($name in @("yt-dlp", "ffmpeg", "ffprobe")) {
     if (-not $entry) {
         throw "No manifest entry for $name on $TargetTriple"
     }
-    $requiredFields = @("version", "sourceUrl", "sourceCodeUrl", "license", "sha256")
+    $requiredFields = @(
+        "version",
+        "sourceUrl",
+        "sourceTag",
+        "sourceCommit",
+        "sourceCodeUrl",
+        "sourceArchiveUrl",
+        "sourceArchiveSha256",
+        "license",
+        "sha256"
+    )
     if ($name -eq "yt-dlp") {
-        $requiredFields += "thirdPartyNoticesUrl"
+        $requiredFields += @("thirdPartyNoticesUrl", "coreLicense", "licenseNote")
+        if ($entry.license -ne "GPL-3.0-or-later" -or $entry.coreLicense -ne "Unlicense") {
+            throw "yt-dlp must record the executable aggregate as GPL-3.0-or-later and the core as Unlicense"
+        }
     } else {
-        $requiredFields += "buildInformationUrl"
+        $requiredFields += @("buildInformationUrl", "buildProviderTag", "buildProviderCommit")
     }
     foreach ($field in $requiredFields) {
         if ([string]::IsNullOrWhiteSpace($entry.$field)) {
@@ -53,6 +66,7 @@ foreach ($name in @("yt-dlp", "ffmpeg", "ffprobe")) {
 foreach ($licenseFile in @(
     "FFmpeg-GPLv3.txt",
     "FFmpeg-SOURCE-AND-BUILD-INFO.txt",
+    "FFmpeg-UPSTREAM-LICENSE.md",
     "Node-THIRD-PARTY-NOTICES.txt",
     "PressStart2P-OFL.txt",
     "Rust-THIRD-PARTY-NOTICES.txt",
@@ -68,6 +82,11 @@ foreach ($licenseFile in @(
 $sourceLicense = Join-Path $projectRoot "LICENSE"
 if (-not (Test-Path -LiteralPath $sourceLicense -PathType Leaf)) {
     throw "Missing BITIG MIT source license"
+}
+
+$sourceIndex = Join-Path $projectRoot "THIRD-PARTY-SOURCES.md"
+if (-not (Test-Path -LiteralPath $sourceIndex -PathType Leaf)) {
+    throw "Missing corresponding-source index: THIRD-PARTY-SOURCES.md"
 }
 
 Write-Output "Sidecars verified for $TargetTriple"

@@ -6,7 +6,8 @@
     "icon": ["icons/icon.ico"],
     "resources": {
       "../licenses/": "licenses/",
-      "../LICENSE": "licenses/BITIG-MIT.txt"
+      "../LICENSE": "licenses/BITIG-MIT.txt",
+      "../THIRD-PARTY-SOURCES.md": "licenses/THIRD-PARTY-SOURCES.md"
     },
     "externalBin": [
       "binaries/yt-dlp",

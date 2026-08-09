@@ -9,11 +9,18 @@ text is included as FFmpeg-GPLv3.txt.
 Binary release and build provenance:
 https://github.com/GyanD/codexffmpeg/releases/tag/9.0
 
-Exact FFmpeg source revision identified by the binary distributor:
-https://github.com/FFmpeg/FFmpeg/commit/d32b387f2b
+Exact FFmpeg source tag and full revision identified by the binary distributor:
+n9.0
+d32b387f2b0a484599d4587d651891f0c63c4238
+https://github.com/FFmpeg/FFmpeg/commit/d32b387f2b0a484599d4587d651891f0c63c4238
 
 Downloadable source archive for that revision:
-https://github.com/FFmpeg/FFmpeg/archive/d32b387f2b.zip
+https://github.com/FFmpeg/FFmpeg/archive/d32b387f2b0a484599d4587d651891f0c63c4238.tar.gz
+
+Exact Gyan build-repository tag and commit:
+9.0
+46465995c991fe65c5de853fa79bddec09cd6c37
+https://github.com/GyanD/codexffmpeg/tree/46465995c991fe65c5de853fa79bddec09cd6c37
 
 Build provider information, dependency list, and current build documentation:
 https://www.gyan.dev/ffmpeg/builds/
@@ -42,3 +49,8 @@ Configuration:
 --enable-libvorbis --enable-librubberband
 
 No BITIG patch is applied to FFmpeg or to the bundled Gyan binaries.
+
+FFmpeg includes code derived from the Independent JPEG Group in
+libavcodec/jfdctfst.c, libavcodec/jfdctint_template.c, and
+libavcodec/jrevdct.c. BITIG makes no additions, deletions, or other changes to
+those files. See FFmpeg-UPSTREAM-LICENSE.md for the exact upstream record.

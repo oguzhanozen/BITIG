@@ -54,7 +54,7 @@ export function ToolsDialog({ onClose, onOpenQuickTour }: ToolsDialogProps) {
     }}>
       <section className="center-modal tools-dialog" role="dialog" aria-modal="true" aria-labelledby="tools-title">
         <div className="modal-heading">
-          <div><p className="eyebrow">TOOLS</p><h2 id="tools-title">Media components</h2></div>
+          <div><p className="eyebrow">ABOUT &amp; TOOLS</p><h2 id="tools-title">BITIG</h2></div>
           <button className="popover-close" type="button" onClick={onClose} aria-label="Close tools">×</button>
         </div>
 
@@ -73,6 +73,11 @@ export function ToolsDialog({ onClose, onOpenQuickTour }: ToolsDialogProps) {
           ))}
           {!report && !error && <p className="tool-loading">Reading bundled tool status…</p>}
         </div>
+
+        <article className="tool-row legal-notice">
+          <div className="tool-row-heading"><h3>Legal / acceptable use</h3></div>
+          <p>BITIG should only be used for content you have the right to download, copy, or store. Users are responsible for complying with applicable copyright law and terms of service. BITIG is not designed to bypass DRM or access controls.</p>
+        </article>
 
         {error && <p className="form-error" role="alert">{error}</p>}
         {report?.checkedAt && <p className="checked-at">Last checked {new Date(report.checkedAt).toLocaleString()}</p>}
