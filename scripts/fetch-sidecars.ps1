@@ -4,6 +4,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
+. (Join-Path $PSScriptRoot "sha256.ps1")
 
 if ($TargetTriple -notlike "*windows*") {
     throw "Automatic sidecar fetching currently supports Windows targets only."
@@ -26,7 +27,7 @@ foreach ($entry in $entries) {
         $installedSetIsValid = $false
         break
     }
-    $installedHash = (Get-FileHash -LiteralPath $installedPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $installedHash = Get-Sha256 -LiteralPath $installedPath
     if ($installedHash -ne $entry.sha256.ToLowerInvariant()) {
         $installedSetIsValid = $false
         break
@@ -72,7 +73,7 @@ try {
     foreach ($entry in $entries) {
         $fileName = "$($entry.name)-$TargetTriple.exe"
         $candidate = Join-Path $temporaryRoot $fileName
-        $actualHash = (Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash.ToLowerInvariant()
+        $actualHash = Get-Sha256 -LiteralPath $candidate
         if ($actualHash -ne $entry.sha256.ToLowerInvariant()) {
             throw "Checksum mismatch for $fileName."
         }

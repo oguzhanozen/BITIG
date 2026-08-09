@@ -3,6 +3,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "sha256.ps1")
 
 if ([string]::IsNullOrWhiteSpace($TargetTriple)) {
     $hostLine = & rustc -vV | Where-Object { $_ -like "host:*" } | Select-Object -First 1
@@ -56,7 +57,7 @@ foreach ($name in @("yt-dlp", "ffmpeg", "ffprobe")) {
         }
     }
 
-    $actualHash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+    $actualHash = Get-Sha256 -LiteralPath $path
     if ($actualHash -ne $entry.sha256.ToLowerInvariant()) {
         throw "Checksum mismatch for $fileName"
     }

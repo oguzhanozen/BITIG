@@ -5,6 +5,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "sha256.ps1")
 $artifactRoot = Resolve-Path -LiteralPath $ArtifactDirectory
 $artifactRootPath = $artifactRoot.Path.TrimEnd(
     [System.IO.Path]::DirectorySeparatorChar,
@@ -15,7 +16,7 @@ $lines = Get-ChildItem -LiteralPath $artifactRoot -File -Recurse |
     Where-Object { $_.Name -ne $OutputFile } |
     Sort-Object FullName |
     ForEach-Object {
-        $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        $hash = Get-Sha256 -LiteralPath $_.FullName
         $relative = $_.FullName.Substring($artifactRootPath.Length).TrimStart(
             [System.IO.Path]::DirectorySeparatorChar,
             [System.IO.Path]::AltDirectorySeparatorChar

@@ -3,6 +3,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "sha256.ps1")
 
 $projectRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
@@ -27,7 +28,7 @@ foreach ($entry in $uniqueSources) {
     $destination = Join-Path $outputRoot $fileName
     $needsDownload = $true
     if (Test-Path -LiteralPath $destination -PathType Leaf) {
-        $existingHash = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant()
+        $existingHash = Get-Sha256 -LiteralPath $destination
         $needsDownload = $existingHash -ne $entry.sourceArchiveSha256.ToLowerInvariant()
     }
     if ($needsDownload) {
@@ -36,7 +37,7 @@ foreach ($entry in $uniqueSources) {
     if ((Get-Item -LiteralPath $destination).Length -le 0) {
         throw "Downloaded source archive is empty: $fileName"
     }
-    $hash = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant()
+    $hash = Get-Sha256 -LiteralPath $destination
     if ($hash -ne $entry.sourceArchiveSha256.ToLowerInvariant()) {
         throw "Corresponding-source checksum mismatch for $fileName"
     }
