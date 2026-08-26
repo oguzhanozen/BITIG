@@ -17,7 +17,11 @@ const stateLabels: Record<ToolUpdateState, string> = {
 export function ToolsDialog({ onClose, onOpenQuickTour }: ToolsDialogProps) {
   const [report, setReport] = useState<ToolStatusReport | null>(null);
   const [checking, setChecking] = useState(false);
+  const [installing, setInstalling] = useState(false);
+  const [restartRequired, setRestartRequired] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const hasUpdates = report?.tools.some((tool) => tool.state === "update_available") ?? false;
 
   useEffect(() => {
     let disposed = false;
@@ -48,6 +52,24 @@ export function ToolsDialog({ onClose, onOpenQuickTour }: ToolsDialogProps) {
     }
   }
 
+  async function installUpdates() {
+    setInstalling(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await backend.installToolUpdates();
+      setRestartRequired(result.restartRequired);
+      setNotice(result.updatedTools.length > 0
+        ? `${result.updatedTools.join(" & ")} installed and verified. Restart BITIG to use them.`
+        : "The installed tools are already up to date.");
+      setReport(await backend.getToolStatus(true));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Tool updates could not be installed.");
+    } finally {
+      setInstalling(false);
+    }
+  }
+
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose();
@@ -66,7 +88,7 @@ export function ToolsDialog({ onClose, onOpenQuickTour }: ToolsDialogProps) {
                 <div><dt>INSTALLED</dt><dd>{tool.installedVersion}</dd></div>
                 <div><dt>LATEST</dt><dd>{tool.latestVersion ?? "—"}</dd></div>
                 <div><dt>INTEGRITY</dt><dd>{tool.integrityVerified ? "VERIFIED" : "UNKNOWN"}</dd></div>
-                <div><dt>UPDATES</dt><dd>{tool.updateSupported ? "SUPPORTED" : "WITH BITIG"}</dd></div>
+                <div><dt>UPDATES</dt><dd>{tool.updateSupported ? "IN APP" : "WITH BITIG"}</dd></div>
               </dl>
               {tool.message && <p>{tool.message}</p>}
             </article>
@@ -80,10 +102,18 @@ export function ToolsDialog({ onClose, onOpenQuickTour }: ToolsDialogProps) {
         </article>
 
         {error && <p className="form-error" role="alert">{error}</p>}
+        {notice && <p className="form-success" role="status">{notice}</p>}
         {report?.checkedAt && <p className="checked-at">Last checked {new Date(report.checkedAt).toLocaleString()}</p>}
 
         <div className="tools-actions">
-          <button className="primary-button" type="button" onClick={() => void checkUpdates()} disabled={checking}>{checking ? "CHECKING…" : "CHECK UPDATES"}</button>
+          {restartRequired ? (
+            <button className="primary-button" type="button" onClick={() => void backend.restartApp()}>RESTART BITIG</button>
+          ) : hasUpdates ? (
+            <button className="primary-button" type="button" onClick={() => void installUpdates()} disabled={installing || checking}>{installing ? "DOWNLOADING & VERIFYING…" : "INSTALL UPDATES"}</button>
+          ) : (
+            <button className="primary-button" type="button" onClick={() => void checkUpdates()} disabled={checking || installing}>{checking ? "CHECKING…" : "CHECK UPDATES"}</button>
+          )}
+          {hasUpdates && !restartRequired && <button className="secondary-button" type="button" onClick={() => void checkUpdates()} disabled={checking || installing}>{checking ? "CHECKING…" : "CHECK AGAIN"}</button>}
           <button className="secondary-button" type="button" onClick={onOpenQuickTour}>OPEN QUICK TOUR</button>
         </div>
       </section>

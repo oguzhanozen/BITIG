@@ -90,3 +90,8 @@ export interface ToolStatusReport {
   checkedAt: string | null;
   tools: ToolVersionStatus[];
 }
+
+export interface ToolUpdateResult {
+  updatedTools: string[];
+  restartRequired: boolean;
+}

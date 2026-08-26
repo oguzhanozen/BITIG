@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AppError, DownloadJob, Folder, Media, MediaAnalysis, ToolStatusReport } from "../types/domain";
+import type { AppError, DownloadJob, Folder, Media, MediaAnalysis, ToolStatusReport, ToolUpdateResult } from "../types/domain";
 
 class BackendError extends Error implements AppError {
   constructor(public readonly code: string, message: string) {
@@ -58,4 +58,6 @@ export const backend = {
   deleteMedia: (id: string) => call<void>("delete_media", { id }),
   getToolStatus: (checkUpdates: boolean) =>
     call<ToolStatusReport>("get_tool_status", { checkUpdates }),
+  installToolUpdates: () => call<ToolUpdateResult>("install_tool_updates"),
+  restartApp: () => call<void>("restart_app"),
 };

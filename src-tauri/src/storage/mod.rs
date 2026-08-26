@@ -14,6 +14,7 @@ pub struct AppPaths {
     pub media: PathBuf,
     pub thumbnails: PathBuf,
     pub temp: PathBuf,
+    pub tools: PathBuf,
     pub logs: PathBuf,
 }
 
@@ -28,10 +29,17 @@ impl AppPaths {
             media: root.join("media"),
             thumbnails: root.join("thumbnails"),
             temp: root.join("temp"),
+            tools: root.join("tools"),
             logs: root.join("logs"),
             root: Arc::new(root),
         };
-        for directory in [&paths.media, &paths.thumbnails, &paths.temp, &paths.logs] {
+        for directory in [
+            &paths.media,
+            &paths.thumbnails,
+            &paths.temp,
+            &paths.tools,
+            &paths.logs,
+        ] {
             tokio::fs::create_dir_all(directory).await?;
         }
         Ok(paths)
@@ -93,6 +101,7 @@ mod tests {
             media: root.join("media"),
             thumbnails: root.join("thumbnails"),
             temp: root.join("temp"),
+            tools: root.join("tools"),
             logs: root.join("logs"),
             root: Arc::new(root),
         }
@@ -146,6 +155,7 @@ mod tests {
             media: root.join("media"),
             thumbnails: root.join("thumbnails"),
             temp: temp.clone(),
+            tools: root.join("tools"),
             logs: root.join("logs"),
             root: Arc::new(root),
         };

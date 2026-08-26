@@ -1,31 +1,21 @@
 use std::time::Duration;
 
 use serde::Deserialize;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use crate::{
     domain::{ToolStatusReport, ToolUpdateState, ToolVersionStatus},
+    downloader::InstalledToolVersions,
     errors::{AppError, AppResult},
 };
 
-const MANIFEST: &str = include_str!("../../binaries/manifest.json");
 const YT_DLP_LATEST_URL: &str = "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest";
 const FFMPEG_LATEST_URL: &str = "https://www.gyan.dev/ffmpeg/builds/release-version";
 
 #[derive(Clone)]
 pub struct ToolStatusService {
-    yt_dlp_version: String,
-    ffmpeg_version: String,
-}
-
-#[derive(Deserialize)]
-struct ToolManifest {
-    artifacts: Vec<ToolArtifact>,
-}
-
-#[derive(Deserialize)]
-struct ToolArtifact {
-    name: String,
-    version: String,
+    installed: Arc<RwLock<InstalledToolVersions>>,
 }
 
 #[derive(Deserialize)]
@@ -39,30 +29,28 @@ struct LatestVersions {
 }
 
 impl ToolStatusService {
-    pub fn new() -> AppResult<Self> {
-        let manifest: ToolManifest = serde_json::from_str(MANIFEST)
-            .map_err(|error| AppError::ToolIntegrity(error.to_string()))?;
-        let version = |name: &str| {
-            manifest
-                .artifacts
-                .iter()
-                .find(|artifact| artifact.name == name)
-                .map(|artifact| artifact.version.clone())
-                .ok_or_else(|| AppError::ToolIntegrity(name.into()))
-        };
-        Ok(Self {
-            yt_dlp_version: version("yt-dlp")?,
-            ffmpeg_version: version("ffmpeg")?,
-        })
+    pub fn new(installed: InstalledToolVersions) -> Self {
+        Self {
+            installed: Arc::new(RwLock::new(installed)),
+        }
+    }
+
+    pub(crate) async fn installed_versions(&self) -> InstalledToolVersions {
+        self.installed.read().await.clone()
+    }
+
+    pub(crate) async fn set_installed_versions(&self, installed: InstalledToolVersions) {
+        *self.installed.write().await = installed;
     }
 
     pub async fn report(&self, check_updates: bool) -> AppResult<ToolStatusReport> {
+        let installed = self.installed.read().await.clone();
         if !check_updates {
             return Ok(ToolStatusReport {
                 checked_at: None,
                 tools: vec![
-                    not_checked("yt-dlp", "yt-dlp", &self.yt_dlp_version),
-                    not_checked("ffmpeg", "FFmpeg", &self.ffmpeg_version),
+                    not_checked("yt-dlp", "yt-dlp", &installed.yt_dlp),
+                    not_checked("ffmpeg", "FFmpeg", &installed.ffmpeg),
                 ],
             });
         }
@@ -73,8 +61,8 @@ impl ToolStatusService {
         Ok(ToolStatusReport {
             checked_at: Some(chrono::Utc::now().to_rfc3339()),
             tools: vec![
-                checked_status("yt-dlp", "yt-dlp", &self.yt_dlp_version, latest.yt_dlp),
-                checked_status("ffmpeg", "FFmpeg", &self.ffmpeg_version, latest.ffmpeg),
+                checked_status("yt-dlp", "yt-dlp", &installed.yt_dlp, latest.yt_dlp),
+                checked_status("ffmpeg", "FFmpeg", &installed.ffmpeg, latest.ffmpeg),
             ],
         })
     }
@@ -88,8 +76,8 @@ fn not_checked(id: &str, name: &str, installed_version: &str) -> ToolVersionStat
         latest_version: None,
         state: ToolUpdateState::NotChecked,
         integrity_verified: true,
-        update_supported: false,
-        message: Some("Updates are installed with verified BITIG releases.".into()),
+        update_supported: true,
+        message: Some("Check for updates, then install verified releases here.".into()),
     }
 }
 
@@ -111,8 +99,8 @@ fn checked_status(
             },
             latest_version: Some(latest_version),
             integrity_verified: true,
-            update_supported: false,
-            message: Some("Updates are installed with verified BITIG releases.".into()),
+            update_supported: true,
+            message: Some("Official release digests are verified before installation.".into()),
         },
         Err(()) => ToolVersionStatus {
             id: id.into(),
@@ -121,7 +109,7 @@ fn checked_status(
             latest_version: None,
             state: ToolUpdateState::CheckFailed,
             integrity_verified: true,
-            update_supported: false,
+            update_supported: true,
             message: Some("The update service could not be reached.".into()),
         },
     }
@@ -171,7 +159,7 @@ fn validate_version(value: &str) -> Result<String, ()> {
     .ok_or(())
 }
 
-fn is_at_least(installed: &str, latest: &str) -> bool {
+pub(crate) fn is_at_least(installed: &str, latest: &str) -> bool {
     version_numbers(installed) >= version_numbers(latest)
 }
 

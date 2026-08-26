@@ -52,6 +52,8 @@ pub fn run() {
             commands::downloads::get_download,
             commands::downloads::list_downloads,
             commands::tools::get_tool_status,
+            commands::tools::install_tool_updates,
+            commands::tools::restart_app,
         ])
         .run(tauri::generate_context!())
         .expect("failed to run BITIG");

@@ -13,6 +13,8 @@ pub enum AppError {
     ToolUnavailable,
     #[error("A bundled media tool failed its integrity check: {0}")]
     ToolIntegrity(String),
+    #[error("The media tools could not be updated: {0}")]
+    ToolUpdate(String),
     #[error("The media URL could not be analyzed: {0}")]
     Analysis(String),
     #[error("The media download failed: {0}")]
@@ -53,6 +55,7 @@ impl AppError {
             Self::InvalidUrl => "invalid_url",
             Self::ToolUnavailable => "tool_unavailable",
             Self::ToolIntegrity(_) => "tool_integrity_failed",
+            Self::ToolUpdate(_) => "tool_update_failed",
             Self::Analysis(_) => "analysis_failed",
             Self::Download(_) => "download_failed",
             Self::MediaValidation => "media_validation_failed",
@@ -80,6 +83,10 @@ impl AppError {
             }
             Self::ToolIntegrity(_) => {
                 "A bundled media tool failed its integrity check. Reinstall BITIG.".into()
+            }
+            Self::ToolUpdate(_) => {
+                "The tool update could not be installed. Check your connection and try again."
+                    .into()
             }
             _ => self.to_string(),
         }

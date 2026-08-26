@@ -28,3 +28,10 @@ pub struct ToolStatusReport {
     pub checked_at: Option<String>,
     pub tools: Vec<ToolVersionStatus>,
 }
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolUpdateResult {
+    pub updated_tools: Vec<String>,
+    pub restart_required: bool,
+}

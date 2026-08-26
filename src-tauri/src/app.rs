@@ -9,6 +9,7 @@ use crate::{
     repositories::{FolderRepository, MediaRepository},
     services::{
         DownloadManager, FolderService, LibraryService, MediaAnalysisService, ToolStatusService,
+        ToolUpdateService,
     },
     storage::AppPaths,
 };
@@ -19,6 +20,7 @@ pub struct AppState {
     pub analysis: MediaAnalysisService,
     pub downloads: DownloadManager,
     pub tool_status: ToolStatusService,
+    pub tool_updates: ToolUpdateService,
 }
 
 impl AppState {
@@ -27,7 +29,14 @@ impl AppState {
         let pool = database::connect(&paths.database).await?;
         database::recover_interrupted_downloads(&pool).await?;
         paths.cleanup_stale_temp().await?;
-        let tools = ToolPaths::discover_and_verify().await?;
+        let tools = ToolPaths::discover_and_verify(&paths.tools).await?;
+        let tool_status = ToolStatusService::new(tools.versions.clone());
+        let tool_updates = ToolUpdateService::new(
+            paths.tools.clone(),
+            paths.temp.clone(),
+            tools.clone(),
+            tool_status.clone(),
+        );
 
         let folders = Arc::new(FolderRepository::new(pool.clone()));
         let media = Arc::new(MediaRepository::new(pool.clone()));
@@ -40,7 +49,8 @@ impl AppState {
             library: LibraryService::new(media, paths),
             analysis,
             downloads,
-            tool_status: ToolStatusService::new()?,
+            tool_status,
+            tool_updates,
         })
     }
 }
