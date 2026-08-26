@@ -7,13 +7,13 @@ of truth; this document explains how to obtain the corresponding source.
 
 ## yt-dlp.exe
 
-- Binary release: yt-dlp `2026.07.04`
-- Binary SHA-256: `52fe3c26dcf71fbdc85b528589020bb0b8e383155cfa81b64dd447bbe35e24b8`
-- Exact upstream tag: `2026.07.04`
-- Exact upstream commit: `fdec00e0bf530dc6c3cc7b1dd780e95d9ae460e9`
-- Corresponding source archive: <https://github.com/yt-dlp/yt-dlp/archive/fdec00e0bf530dc6c3cc7b1dd780e95d9ae460e9.tar.gz>
-- Source archive SHA-256: `27c51a76a68621313f678aa8b9c48ce39b895e0db79e06963e07c1b1662c4786`
-- Binary download: <https://github.com/yt-dlp/yt-dlp/releases/download/2026.07.04/yt-dlp.exe>
+- Binary release: yt-dlp `2026.08.19`
+- Binary SHA-256: `66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a`
+- Exact upstream tag: `2026.08.19`
+- Exact upstream commit: `3a08beaf031ab68f966401ead017ac81fe8486cf`
+- Corresponding source archive: <https://github.com/yt-dlp/yt-dlp/archive/3a08beaf031ab68f966401ead017ac81fe8486cf.tar.gz>
+- Source archive SHA-256: `7206981142eb461cfa603c360a55e0d08f3ed58cc754000ed821ad3ebac31ea0`
+- Binary download: <https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp.exe>
 - Binary distribution license: `GPL-3.0-or-later`
 - yt-dlp core license: `Unlicense`
 - Bundled-component notices: `licenses/yt-dlp-THIRD-PARTY-LICENSES.txt`
@@ -26,14 +26,14 @@ license are included in every BITIG installer.
 
 ## ffmpeg.exe and ffprobe.exe
 
-- Binary release: Gyan FFmpeg `9.0 essentials build`
-- ffmpeg.exe SHA-256: `227af0691433b703ffc5725e47f7d06eefc34b4a72e7870e73d30e2cda483ecf`
-- ffprobe.exe SHA-256: `901f0efe4793cbb0f017101e3427f816e8fbf9a407bd585f49df30f4325cfd88`
-- Build-provider tag and commit: `9.0` / `46465995c991fe65c5de853fa79bddec09cd6c37`
-- Exact FFmpeg tag and commit: `n9.0` / `d32b387f2b0a484599d4587d651891f0c63c4238`
-- Corresponding source archive: <https://github.com/FFmpeg/FFmpeg/archive/d32b387f2b0a484599d4587d651891f0c63c4238.tar.gz>
-- Source archive SHA-256: `8a830a34bfaf98514b5d45cf6c01b1fe78b38d5e4c10eab0de2531b783c15f90`
-- Binary archive: <https://github.com/GyanD/codexffmpeg/releases/download/9.0/ffmpeg-9.0-essentials_build.zip>
+- Binary release: Gyan FFmpeg `9.0.1 essentials build`
+- ffmpeg.exe SHA-256: `72a489eccd008c2ec2c0a5856c5c75bc3d8bbfa90166c4566865c246445e6aa3`
+- ffprobe.exe SHA-256: `19202b23c0043f15ad1b7bce2344f406fd52bd6efd8f995ce02e7392a1cec52f`
+- Build-provider tag and commit: `9.0.1` / `46465995c991fe65c5de853fa79bddec09cd6c37`
+- Exact FFmpeg tag and commit: `n9.0.1` / `bf1b838f2ab88b4f8fd83443325c782ea0e0f7fa`
+- Corresponding source archive: <https://github.com/FFmpeg/FFmpeg/archive/bf1b838f2ab88b4f8fd83443325c782ea0e0f7fa.tar.gz>
+- Source archive SHA-256: `fb1931fd4eb29297ee1c1017a24f800c4d8fbea35b4f2aaeb28308a48a9149b4`
+- Binary archive: <https://github.com/GyanD/codexffmpeg/releases/download/9.0.1/ffmpeg-9.0.1-essentials_build.zip>
 - License: `GPL-3.0-or-later`
 - Complete build configuration and provenance: `licenses/FFmpeg-SOURCE-AND-BUILD-INFO.txt`
 - Exact upstream licensing and external-library record: `licenses/FFmpeg-UPSTREAM-LICENSE.md`

@@ -1,24 +1,24 @@
-FFmpeg 9.0 Essentials Build — Source and Build Information
+FFmpeg 9.0.1 Essentials Build — Source and Build Information
 ===========================================================
 
 BITIG for Windows bundles unmodified ffmpeg.exe and ffprobe.exe files from the
-Gyan FFmpeg 9.0 essentials build. The binaries are separate programs invoked
+Gyan FFmpeg 9.0.1 essentials build. The binaries are separate programs invoked
 as subprocesses. They are licensed under GNU GPL version 3; the complete GPLv3
 text is included as FFmpeg-GPLv3.txt.
 
 Binary release and build provenance:
-https://github.com/GyanD/codexffmpeg/releases/tag/9.0
+https://github.com/GyanD/codexffmpeg/releases/tag/9.0.1
 
 Exact FFmpeg source tag and full revision identified by the binary distributor:
-n9.0
-d32b387f2b0a484599d4587d651891f0c63c4238
-https://github.com/FFmpeg/FFmpeg/commit/d32b387f2b0a484599d4587d651891f0c63c4238
+n9.0.1
+bf1b838f2ab88b4f8fd83443325c782ea0e0f7fa
+https://github.com/FFmpeg/FFmpeg/commit/bf1b838f2ab88b4f8fd83443325c782ea0e0f7fa
 
 Downloadable source archive for that revision:
-https://github.com/FFmpeg/FFmpeg/archive/d32b387f2b0a484599d4587d651891f0c63c4238.tar.gz
+https://github.com/FFmpeg/FFmpeg/archive/bf1b838f2ab88b4f8fd83443325c782ea0e0f7fa.tar.gz
 
 Exact Gyan build-repository tag and commit:
-9.0
+9.0.1
 46465995c991fe65c5de853fa79bddec09cd6c37
 https://github.com/GyanD/codexffmpeg/tree/46465995c991fe65c5de853fa79bddec09cd6c37
 
@@ -27,7 +27,7 @@ https://www.gyan.dev/ffmpeg/builds/
 
 The distributed files report:
 
-ffmpeg version 9.0-essentials_build-www.gyan.dev
+ffmpeg version 9.0.1-essentials_build-www.gyan.dev
 built with gcc 16.1.0 (Rev2, Built by MSYS2 project)
 
 Configuration:
