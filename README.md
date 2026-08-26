@@ -13,7 +13,7 @@ BITIG should only be used for content you have the right to download, copy, or s
 ## Prerequisites
 
 - Node.js 24+ and npm 11+
-- Rust 1.88+ with the platform prerequisites required by Tauri 2
+- Rust 1.94+ with the platform prerequisites required by Tauri 2
 - Development sidecars available through `PATH`, the environment variables described in `docs/development/sidecars.md`, or `npm run sidecars:fetch`
 
 End users should not need a separate Python, yt-dlp, FFmpeg, or ffprobe installation; release builds will bundle platform-specific sidecars.
@@ -55,7 +55,7 @@ BITIG source code is released under the MIT License; see `LICENSE`.
 
 Press Start 2P is bundled under `src/assets/fonts/` so the desktop UI works offline. Its SIL Open Font License is stored in `licenses/PressStart2P-OFL.txt`. The font asset and license are sourced from the official Google Fonts repository.
 
-Windows releases currently bundle yt-dlp 2026.07.04 and the Gyan FFmpeg 9.0 essentials build. Their provenance, exact source tags and commits, source archive locations, and hashes are recorded in the sidecar manifest and `THIRD-PARTY-SOURCES.md`. Corresponding license texts, third-party notices, FFmpeg source/build information, and generated Rust notices are stored under `licenses/` and included in the Windows installer.
+Windows releases currently bundle yt-dlp 2026.08.19 and the Gyan FFmpeg 9.0.1 essentials build. Their provenance, exact source tags and commits, source archive locations, and hashes are recorded in the sidecar manifest and `THIRD-PARTY-SOURCES.md`. Corresponding license texts, third-party notices, FFmpeg source/build information, and generated Rust notices are stored under `licenses/` and included in the Windows installer. The About & Tools screen can also install newer official Windows tool releases into AppLocalData after their GitHub-published SHA-256 digests are verified; BITIG must restart before the new tools are used.
 
 The bundled FFmpeg includes code derived from the Independent JPEG Group. BITIG distributes the Gyan binaries unchanged and makes no additions or deletions to that code; the exact upstream licensing record is included in `licenses/FFmpeg-UPSTREAM-LICENSE.md`.
 
