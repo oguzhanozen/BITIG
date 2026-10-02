@@ -2,6 +2,7 @@ export interface Folder {
   id: string;
   parentId: string | null;
   name: string;
+  hasContents: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -94,4 +95,14 @@ export interface ToolStatusReport {
 export interface ToolUpdateResult {
   updatedTools: string[];
   restartRequired: boolean;
+}
+
+export type ToolUpdateStage = "checking" | "downloading" | "verifying" | "installing";
+
+export interface ToolUpdateProgress {
+  operationId: string;
+  stage: ToolUpdateStage;
+  toolName: string | null;
+  downloadedBytes: number;
+  totalBytes: number;
 }

@@ -36,6 +36,7 @@ pub fn run() {
             commands::folders::list_folders,
             commands::folders::create_folder,
             commands::folders::rename_folder,
+            commands::folders::reorder_folder,
             commands::folders::delete_folder,
             commands::library::list_media,
             commands::library::get_media,

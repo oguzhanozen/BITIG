@@ -1,7 +1,8 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { backend } from "../services/backend";
+import { backend, displayError } from "../services/backend";
 import type { DownloadJob, Folder, MediaAnalysis } from "../types/domain";
 import { formatDuration } from "../lib/format";
+import { AppSelect } from "./AppSelect";
 
 interface UrlAnalyzerProps {
   folders: Folder[];
@@ -38,6 +39,10 @@ export function UrlAnalyzer({ folders, initialUrl = "", onStarted }: UrlAnalyzer
 
   async function analyze(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!url.trim()) {
+      setError("Paste a media link to analyze.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -47,7 +52,7 @@ export function UrlAnalyzer({ folders, initialUrl = "", onStarted }: UrlAnalyzer
       setSelectedId(result.options[0]?.id ?? null);
     } catch (caught) {
       setAnalysis(null);
-      setError(caught instanceof Error ? caught.message : "This URL could not be analyzed.");
+      setError(displayError(caught, "This link could not be analyzed."));
     } finally {
       setLoading(false);
     }
@@ -71,7 +76,7 @@ export function UrlAnalyzer({ folders, initialUrl = "", onStarted }: UrlAnalyzer
       setFolderId("");
       setUrl("");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "The download could not be started.");
+      setError(displayError(caught, "The download could not be started."));
     } finally {
       setStarting(false);
     }
@@ -86,7 +91,7 @@ export function UrlAnalyzer({ folders, initialUrl = "", onStarted }: UrlAnalyzer
         </div>
       </div>
 
-      <form className="url-form" onSubmit={(event) => void analyze(event)}>
+      <form className="url-form" onSubmit={(event) => void analyze(event)} autoComplete="off" noValidate>
         <label className="sr-only" htmlFor="media-url">Media URL</label>
         <span aria-hidden="true">↗</span>
         <input id="media-url" type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="Paste a media URL…" autoComplete="off" required disabled={loading || starting} />
@@ -138,8 +143,8 @@ export function UrlAnalyzer({ folders, initialUrl = "", onStarted }: UrlAnalyzer
           </div>
 
           <div className="download-fields">
-            <label htmlFor="download-name">Name<input id="download-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={240} /></label>
-            <label htmlFor="download-folder">Folder<select id="download-folder" value={folderId} onChange={(event) => setFolderId(event.target.value)}><option value="">All media</option>{folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</select></label>
+            <label htmlFor="download-name">Name<input id="download-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={240} autoComplete="off" /></label>
+            <label htmlFor="download-folder">Folder<AppSelect id="download-folder" ariaLabel="Folder" value={folderId} options={[{ value: "", label: "All media" }, ...folders.map((folder) => ({ value: folder.id, label: folder.name }))]} onChange={setFolderId} /></label>
             <button className="primary-button start-download" type="button" disabled={!selectedOption || !name.trim() || starting} onClick={() => void startDownload()}>{starting ? "STARTING…" : "DOWNLOAD"}</button>
           </div>
         </div>

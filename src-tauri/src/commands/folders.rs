@@ -2,7 +2,7 @@ use tauri::State;
 
 use crate::{
     app::AppState,
-    domain::{CreateFolderInput, Folder, RenameInput},
+    domain::{CreateFolderInput, Folder, FolderDeleteMode, RenameInput, ReorderFolderInput},
     errors::AppResult,
 };
 
@@ -25,6 +25,18 @@ pub async fn rename_folder(input: RenameInput, state: State<'_, AppState>) -> Ap
 }
 
 #[tauri::command]
-pub async fn delete_folder(id: String, state: State<'_, AppState>) -> AppResult<()> {
-    state.folders.delete(&id).await
+pub async fn reorder_folder(
+    input: ReorderFolderInput,
+    state: State<'_, AppState>,
+) -> AppResult<Vec<Folder>> {
+    state.folders.reorder(input).await
+}
+
+#[tauri::command]
+pub async fn delete_folder(
+    id: String,
+    mode: FolderDeleteMode,
+    state: State<'_, AppState>,
+) -> AppResult<()> {
+    state.folders.delete(&id, mode).await
 }
