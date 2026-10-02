@@ -36,13 +36,13 @@ export function TitleBar() {
     <header className="title-bar" data-tauri-drag-region onDoubleClick={toggleMaximize}>
       <div className="title-bar-drag" data-tauri-drag-region aria-hidden="true" />
       <div className="window-controls">
-        <button type="button" onClick={() => void appWindow?.minimize()} aria-label="Minimize" title="Minimize">
+        <button type="button" onClick={() => void appWindow?.minimize()} aria-label="Minimize">
           <span className="minimize-icon" aria-hidden="true" />
         </button>
-        <button type="button" onClick={() => toggleMaximize()} aria-label={maximized ? "Restore" : "Maximize"} title={maximized ? "Restore" : "Maximize"}>
+        <button type="button" onClick={() => toggleMaximize()} aria-label={maximized ? "Restore" : "Maximize"}>
           <span className={maximized ? "restore-icon" : "maximize-icon"} aria-hidden="true" />
         </button>
-        <button className="close-window" type="button" onClick={() => void appWindow?.close()} aria-label="Close" title="Close">
+        <button className="close-window" type="button" onClick={() => void appWindow?.close()} aria-label="Close">
           <span className="close-icon" aria-hidden="true" />
         </button>
       </div>

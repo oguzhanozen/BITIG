@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import type { Folder, Media } from "../types/domain";
 import { formatDuration } from "../lib/format";
-import { backend } from "../services/backend";
+import { backend, displayError } from "../services/backend";
+import type { Confirmation } from "./ConfirmDialog";
+import { AppSelect } from "./AppSelect";
 
 type CollectionView = "cards" | "compact" | "list";
 type CollectionFilter = "all" | "video" | "audio" | "mp4" | "webm" | "mkv" | "m4a" | "mp3" | "wav";
@@ -27,6 +29,7 @@ interface MediaGridProps {
   onAddUrl: () => void;
   onSelect: (item: Media) => void;
   onChanged: () => void;
+  requestConfirmation: (details: Confirmation) => Promise<boolean>;
 }
 
 function isCollectionView(value: string | null): value is CollectionView {
@@ -41,7 +44,7 @@ function filterCollection(items: Media[], filter: CollectionFilter): Media[] {
   return items.filter((item) => item.container.toLowerCase() === filter);
 }
 
-export function MediaGrid({ items, folders, loading, folderName, onAddUrl, onSelect, onChanged }: MediaGridProps) {
+export function MediaGrid({ items, folders, loading, folderName, onAddUrl, onSelect, onChanged, requestConfirmation }: MediaGridProps) {
   const [view, setView] = useState<CollectionView>(() => {
     const saved = localStorage.getItem("bitig.collectionView");
     return isCollectionView(saved) ? saved : "cards";
@@ -99,7 +102,7 @@ export function MediaGrid({ items, folders, loading, folderName, onAddUrl, onSel
       await Promise.all(ids.map((id) => backend.moveMedia(id, folderId)));
       setSelectedIds([]);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Media could not be moved.");
+      setError(displayError(caught, "Media could not be moved."));
     } finally {
       onChanged();
       setBusy(false);
@@ -111,14 +114,14 @@ export function MediaGrid({ items, folders, loading, folderName, onAddUrl, onSel
     const message = targets.length === 1
       ? `Delete “${targets[0]!.title}” from BITIG? This removes the managed file.`
       : `Delete ${targets.length} selected items from BITIG? This removes their managed files.`;
-    if (!window.confirm(message)) return;
+    if (!await requestConfirmation({ title: "Delete media?", message, confirmLabel: targets.length === 1 ? "DELETE MEDIA" : "DELETE SELECTED" })) return;
     setBusy(true);
     setError(null);
     try {
       await Promise.all(targets.map((item) => backend.deleteMedia(item.id)));
       setSelectedIds([]);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Media could not be deleted.");
+      setError(displayError(caught, "Media could not be deleted."));
     } finally {
       onChanged();
       setBusy(false);
@@ -146,14 +149,12 @@ export function MediaGrid({ items, folders, loading, folderName, onAddUrl, onSel
         <div><p className="eyebrow">COLLECTION</p><h2 id="collection-title">{folderName}</h2></div>
         <div className="collection-controls">
           <label className="collection-filter">FORMAT
-            <select value={filter} onChange={(event) => setFilter(event.target.value as CollectionFilter)}>
-              {filters.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
+            <AppSelect ariaLabel="Format" value={filter} options={filters} onChange={(next) => setFilter(next as CollectionFilter)} />
           </label>
           <div className="view-switcher" role="group" aria-label="Collection view">
-            <button type="button" className={view === "cards" ? "is-selected" : ""} onClick={() => chooseView("cards")} aria-label="Card view" title="Card view">▦</button>
-            <button type="button" className={view === "compact" ? "is-selected" : ""} onClick={() => chooseView("compact")} aria-label="Compact view" title="Compact view">▤</button>
-            <button type="button" className={view === "list" ? "is-selected" : ""} onClick={() => chooseView("list")} aria-label="List view" title="List view">☷</button>
+            <button type="button" className={view === "cards" ? "is-selected" : ""} onClick={() => chooseView("cards")} aria-label="Card view">▦</button>
+            <button type="button" className={view === "compact" ? "is-selected" : ""} onClick={() => chooseView("compact")} aria-label="Compact view">▤</button>
+            <button type="button" className={view === "list" ? "is-selected" : ""} onClick={() => chooseView("list")} aria-label="List view">☷</button>
           </div>
           <span className="item-count">{visibleItems.length}/{items.length}</span>
         </div>
@@ -164,11 +165,7 @@ export function MediaGrid({ items, folders, loading, folderName, onAddUrl, onSel
         {selectedItems.length > 0 && (
           <>
             <strong>{selectedItems.length} SELECTED</strong>
-            <select aria-label="Move selected media" value="" disabled={busy} onChange={(event) => void move(selectedItems.map((item) => item.id), event.target.value)}>
-              <option value="" disabled>MOVE TO…</option>
-              <option value="__root__">All media</option>
-              {folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
-            </select>
+            <AppSelect ariaLabel="Move selected media" value="" disabled={busy} options={[{ value: "", label: "MOVE TO…", disabled: true }, { value: "__root__", label: "All media" }, ...folders.map((folder) => ({ value: folder.id, label: folder.name }))]} onChange={(next) => void move(selectedItems.map((item) => item.id), next)} />
             <button className="bulk-delete" type="button" disabled={busy} onClick={() => void remove(selectedItems)}>DELETE</button>
             <button className="clear-selection" type="button" onClick={() => setSelectedIds([])}>CLEAR</button>
           </>
@@ -182,7 +179,7 @@ export function MediaGrid({ items, folders, loading, folderName, onAddUrl, onSel
         <div className="media-collection" data-view={view}>
           {visibleItems.map((item) => (
             <article className={`media-card ${selectedIds.includes(item.id) ? "is-selected" : ""}`} key={item.id}>
-              <label className="media-select" title={`Select ${item.title}`}>
+              <label className="media-select">
                 <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => toggleSelected(item.id)} aria-label={`Select ${item.title}`} />
                 <span />
               </label>
@@ -199,11 +196,7 @@ export function MediaGrid({ items, folders, loading, folderName, onAddUrl, onSel
                 <button className="card-menu-trigger" type="button" onClick={() => setOpenMenuId((current) => current === item.id ? null : item.id)} aria-label={`Actions for ${item.title}`} aria-expanded={openMenuId === item.id}>⋮</button>
                 {openMenuId === item.id && <div className="card-action-menu">
                   <label>MOVE TO
-                    <select aria-label={`Move ${item.title}`} value="" disabled={busy} onChange={(event) => { setOpenMenuId(null); void move([item.id], event.target.value); }}>
-                      <option value="" disabled>Choose folder…</option>
-                      <option value="__root__">All media</option>
-                      {folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
-                    </select>
+                    <AppSelect ariaLabel={`Move ${item.title}`} value="" disabled={busy} options={[{ value: "", label: "Choose folder…", disabled: true }, { value: "__root__", label: "All media" }, ...folders.map((folder) => ({ value: folder.id, label: folder.name }))]} onChange={(next) => { setOpenMenuId(null); void move([item.id], next); }} />
                   </label>
                   <button type="button" disabled={busy} onClick={() => { setOpenMenuId(null); void remove([item]); }}>DELETE FROM BITIG</button>
                 </div>}

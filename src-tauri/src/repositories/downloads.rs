@@ -14,13 +14,21 @@ impl DownloadRepository {
         Self { pool }
     }
 
-    pub async fn create(&self, id: &str, title: &str, source_url: &str) -> AppResult<DownloadJob> {
+    pub async fn create(
+        &self,
+        id: &str,
+        title: &str,
+        source_url: &str,
+        folder_id: Option<&str>,
+    ) -> AppResult<DownloadJob> {
         sqlx::query(
-            "INSERT INTO downloads (id, title, source_url, status) VALUES (?, ?, ?, 'queued')",
+            "INSERT INTO downloads (id, title, source_url, status, folder_id)
+             VALUES (?, ?, ?, 'queued', (SELECT id FROM folders WHERE id = ?))",
         )
         .bind(id)
         .bind(title)
         .bind(source_url)
+        .bind(folder_id)
         .execute(&self.pool)
         .await?;
         self.get(id).await

@@ -92,7 +92,12 @@ impl DownloadManager {
         let job = self
             .inner
             .downloads
-            .create(&id, &title, &resolved.source_url)
+            .create(
+                &id,
+                &title,
+                &resolved.source_url,
+                input.folder_id.as_deref(),
+            )
             .await?;
         let cancellation = CancellationToken::default();
         self.inner
@@ -102,12 +107,8 @@ impl DownloadManager {
             .insert(id.clone(), cancellation.clone());
 
         let manager = self.clone();
-        let folder_id = input.folder_id;
         tauri::async_runtime::spawn(async move {
-            if let Err(error) = manager
-                .run_job(&id, &title, folder_id.as_deref(), resolved, cancellation)
-                .await
-            {
+            if let Err(error) = manager.run_job(&id, &title, resolved, cancellation).await {
                 tracing::error!(job_id = %id, %error, "download job failed");
                 if let Ok(failed) = manager.inner.downloads.fail(&id, &error).await {
                     manager.emit(&failed);
@@ -140,7 +141,6 @@ impl DownloadManager {
         &self,
         job_id: &str,
         title: &str,
-        folder_id: Option<&str>,
         resolved: ResolvedDownload,
         cancellation: CancellationToken,
     ) -> AppResult<()> {
@@ -201,7 +201,6 @@ impl DownloadManager {
             .commit_media(
                 job_id,
                 &media_id,
-                folder_id,
                 title,
                 &relative_path,
                 stored_thumbnail
@@ -400,7 +399,6 @@ impl DownloadManager {
         &self,
         job_id: &str,
         media_id: &str,
-        folder_id: Option<&str>,
         title: &str,
         relative_path: &str,
         thumbnail_path: Option<&str>,
@@ -430,9 +428,9 @@ impl DownloadManager {
         let mut transaction = self.inner.downloads.pool().begin().await?;
         sqlx::query(
             "INSERT INTO media (id, folder_id, title, media_type, source_url, source_platform, source_id, creator, file_path, thumbnail_path, container, width, height, duration_ms, file_size)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             VALUES (?, (SELECT folder_id FROM downloads WHERE id = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
-        .bind(media_id).bind(folder_id).bind(title).bind(match resolved.option.kind { MediaKind::Video => "video", MediaKind::Audio => "audio" })
+        .bind(media_id).bind(job_id).bind(title).bind(match resolved.option.kind { MediaKind::Video => "video", MediaKind::Audio => "audio" })
         .bind(&resolved.source_url).bind(&resolved.analysis.source_platform).bind(&resolved.analysis.source_id)
         .bind(&resolved.analysis.creator).bind(relative_path).bind(thumbnail_path).bind(strategy_container(&resolved.strategy)?)
         .bind(dimensions.and_then(|stream| stream.width)).bind(dimensions.and_then(|stream| stream.height))

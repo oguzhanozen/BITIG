@@ -45,7 +45,7 @@ impl AppState {
             DownloadManager::new(app.clone(), analysis.clone(), pool, paths.clone(), tools);
 
         Ok(Self {
-            folders: FolderService::new(folders),
+            folders: FolderService::new(folders, paths.clone()),
             library: LibraryService::new(media, paths),
             analysis,
             downloads,

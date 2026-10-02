@@ -35,3 +35,22 @@ pub struct ToolUpdateResult {
     pub updated_tools: Vec<String>,
     pub restart_required: bool,
 }
+
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ToolUpdateStage {
+    Checking,
+    Downloading,
+    Verifying,
+    Installing,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolUpdateProgress {
+    pub operation_id: String,
+    pub stage: ToolUpdateStage,
+    pub tool_name: Option<String>,
+    pub downloaded_bytes: u64,
+    pub total_bytes: u64,
+}

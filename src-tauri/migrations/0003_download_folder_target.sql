@@ -1,0 +1,1 @@
+ALTER TABLE downloads ADD COLUMN folder_id TEXT REFERENCES folders(id) ON DELETE SET NULL;

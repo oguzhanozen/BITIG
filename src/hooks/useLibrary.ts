@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { backend } from "../services/backend";
+import { backend, displayError, type FolderDeleteMode } from "../services/backend";
 import type { AppError, Folder, Media } from "../types/domain";
 
 interface LibraryState {
@@ -19,9 +19,7 @@ const initialState: LibraryState = {
 };
 
 function asAppError(error: unknown): AppError {
-  return typeof error === "object" && error !== null && "code" in error && "message" in error
-    ? (error as AppError)
-    : { code: "unexpected", message: "The library could not be loaded." };
+  return { code: "unexpected", message: displayError(error, "The library could not be loaded.") };
 }
 
 export function useLibrary() {
@@ -56,18 +54,44 @@ export function useLibrary() {
 
   const createFolder = useCallback(async (name: string, parentId: string | null) => {
     const folder = await backend.createFolder(name, parentId);
-    setState((current) => ({ ...current, folders: [...current.folders, folder] }));
+    setState((current) => ({
+      ...current,
+      folders: [...current.folders.map((item) => item.id === parentId ? { ...item, hasContents: true } : item), folder],
+    }));
     return folder;
   }, []);
 
-  const deleteFolder = useCallback(async (id: string) => {
-    await backend.deleteFolder(id);
+  const renameFolder = useCallback(async (id: string, name: string) => {
+    const renamed = await backend.renameFolder(id, name);
     setState((current) => ({
       ...current,
-      folders: current.folders.filter((folder) => folder.id !== id),
+      folders: current.folders.map((folder) => folder.id === id ? renamed : folder),
     }));
-    if (state.selectedFolderId === id) await selectFolder(null);
-  }, [selectFolder, state.selectedFolderId]);
+  }, []);
+
+  const reorderFolder = useCallback(async (id: string, targetId: string, placement: "before" | "after") => {
+    const folders = await backend.reorderFolder(id, targetId, placement);
+    setState((current) => ({ ...current, folders }));
+  }, []);
+
+  const deleteFolder = useCallback(async (id: string, mode: FolderDeleteMode) => {
+    await backend.deleteFolder(id, mode);
+    let selectedFolderId = state.selectedFolderId;
+    if (mode === "delete_contents") {
+      let ancestorId = selectedFolderId;
+      while (ancestorId && ancestorId !== id) {
+        ancestorId = state.folders.find((folder) => folder.id === ancestorId)?.parentId ?? null;
+      }
+      if (ancestorId === id) selectedFolderId = null;
+    } else if (selectedFolderId === id) {
+      selectedFolderId = null;
+    }
+    const nextFolderId = selectedFolderId;
+    if (nextFolderId !== state.selectedFolderId) {
+      setState((current) => ({ ...current, selectedFolderId: nextFolderId }));
+    }
+    await load(nextFolderId);
+  }, [load, state.folders, state.selectedFolderId]);
 
   const search = useCallback(async (query: string) => {
     setState((current) => ({ ...current, loading: true, error: null }));
@@ -83,5 +107,5 @@ export function useLibrary() {
 
   const reload = useCallback(() => load(state.selectedFolderId), [load, state.selectedFolderId]);
 
-  return { ...state, selectFolder, createFolder, deleteFolder, search, reload };
+  return { ...state, selectFolder, createFolder, renameFolder, reorderFolder, deleteFolder, search, reload };
 }

@@ -12,7 +12,7 @@ use url::Url;
 use zip::ZipArchive;
 
 use crate::{
-    domain::ToolUpdateResult,
+    domain::{ToolUpdateProgress, ToolUpdateResult, ToolUpdateStage},
     downloader::{
         CachedToolManifest, InstalledToolVersions, ToolPaths, cached_installation_name,
         executable_name, write_cached_manifest,
@@ -70,6 +70,39 @@ struct PreparedInstallation {
     updated_tools: Vec<String>,
 }
 
+#[derive(Clone)]
+struct ProgressReporter {
+    operation_id: String,
+    emit: Arc<dyn Fn(ToolUpdateProgress) + Send + Sync>,
+}
+
+struct TransferSpec<'a> {
+    expected_size: u64,
+    maximum_size: u64,
+    tool_name: &'a str,
+    completed_bytes: u64,
+    total_bytes: u64,
+    progress: &'a ProgressReporter,
+}
+
+impl ProgressReporter {
+    fn report(
+        &self,
+        stage: ToolUpdateStage,
+        tool_name: Option<&str>,
+        downloaded_bytes: u64,
+        total_bytes: u64,
+    ) {
+        (self.emit)(ToolUpdateProgress {
+            operation_id: self.operation_id.clone(),
+            stage,
+            tool_name: tool_name.map(str::to_owned),
+            downloaded_bytes,
+            total_bytes,
+        });
+    }
+}
+
 impl ToolUpdateService {
     pub fn new(
         tools_root: PathBuf,
@@ -85,13 +118,27 @@ impl ToolUpdateService {
         }
     }
 
-    pub async fn install_available(&self) -> AppResult<ToolUpdateResult> {
+    pub async fn install_available(
+        &self,
+        operation_id: String,
+        on_progress: impl Fn(ToolUpdateProgress) + Send + Sync + 'static,
+    ) -> AppResult<ToolUpdateResult> {
+        if uuid::Uuid::parse_str(&operation_id).is_err() {
+            return Err(AppError::Validation(
+                "invalid tool update operation ID".into(),
+            ));
+        }
+        let progress = ProgressReporter {
+            operation_id,
+            emit: Arc::new(on_progress),
+        };
         if !cfg!(all(target_os = "windows", target_arch = "x86_64")) {
             return Err(AppError::ToolUpdate(
                 "automatic tool updates support Windows x64 only".into(),
             ));
         }
 
+        progress.report(ToolUpdateStage::Checking, None, 0, 0);
         let catalog = tokio::task::spawn_blocking(fetch_catalog)
             .await
             .map_err(|error| AppError::ToolUpdate(error.to_string()))??;
@@ -116,6 +163,7 @@ impl ToolUpdateService {
             .clone();
         let staged_for_task = staged.clone();
         let catalog_for_task = catalog.clone();
+        let progress_for_task = progress.clone();
         let prepared = tokio::task::spawn_blocking(move || {
             prepare_installation(
                 &staged_for_task,
@@ -124,6 +172,7 @@ impl ToolUpdateService {
                 &catalog_for_task,
                 update_yt_dlp,
                 update_ffmpeg,
+                &progress_for_task,
             )
         })
         .await
@@ -136,6 +185,16 @@ impl ToolUpdateService {
                 return Err(error);
             }
         };
+        let total_bytes = (if update_yt_dlp {
+            catalog.yt_dlp.size
+        } else {
+            0
+        }) + (if update_ffmpeg {
+            catalog.ffmpeg.size
+        } else {
+            0
+        });
+        progress.report(ToolUpdateStage::Installing, None, total_bytes, total_bytes);
         write_cached_manifest(&staged, &prepared.manifest).await?;
         let installation_name = cached_installation_name();
         let final_directory = self.tools_root.join(&installation_name);
@@ -264,14 +323,34 @@ fn prepare_installation(
     catalog: &UpdateCatalog,
     update_yt_dlp: bool,
     update_ffmpeg: bool,
+    progress: &ProgressReporter,
 ) -> AppResult<PreparedInstallation> {
     let yt_dlp_path = staged.join(executable_name("yt-dlp"));
     let ffmpeg_path = staged.join(executable_name("ffmpeg"));
     let ffprobe_path = staged.join(executable_name("ffprobe"));
     let mut updated_tools = Vec::new();
+    let total_bytes = (if update_yt_dlp {
+        catalog.yt_dlp.size
+    } else {
+        0
+    }) + (if update_ffmpeg {
+        catalog.ffmpeg.size
+    } else {
+        0
+    });
+    let mut completed_bytes = 0;
 
     if update_yt_dlp {
-        download_verified(&catalog.yt_dlp, &yt_dlp_path, MAX_YT_DLP_BYTES)?;
+        download_verified(
+            &catalog.yt_dlp,
+            &yt_dlp_path,
+            MAX_YT_DLP_BYTES,
+            "yt-dlp",
+            completed_bytes,
+            total_bytes,
+            progress,
+        )?;
+        completed_bytes += catalog.yt_dlp.size;
         updated_tools.push("yt-dlp".into());
     } else {
         std::fs::copy(&active.yt_dlp, &yt_dlp_path)?;
@@ -279,7 +358,21 @@ fn prepare_installation(
 
     if update_ffmpeg {
         let archive_path = staged.join("ffmpeg-update.zip");
-        download_verified(&catalog.ffmpeg, &archive_path, MAX_FFMPEG_ARCHIVE_BYTES)?;
+        download_verified(
+            &catalog.ffmpeg,
+            &archive_path,
+            MAX_FFMPEG_ARCHIVE_BYTES,
+            "FFmpeg",
+            completed_bytes,
+            total_bytes,
+            progress,
+        )?;
+        progress.report(
+            ToolUpdateStage::Installing,
+            Some("FFmpeg"),
+            total_bytes,
+            total_bytes,
+        );
         extract_ffmpeg(&archive_path, &ffmpeg_path, &ffprobe_path)?;
         std::fs::remove_file(archive_path)?;
         updated_tools.push("ffmpeg".into());
@@ -288,6 +381,7 @@ fn prepare_installation(
         std::fs::copy(&active.ffprobe, &ffprobe_path)?;
     }
 
+    progress.report(ToolUpdateStage::Verifying, None, total_bytes, total_bytes);
     let yt_dlp_sha256 = sha256_file_sync(&yt_dlp_path)?;
     let ffmpeg_sha256 = sha256_file_sync(&ffmpeg_path)?;
     let ffprobe_sha256 = sha256_file_sync(&ffprobe_path)?;
@@ -316,6 +410,10 @@ fn download_verified(
     asset: &VerifiedAsset,
     destination: &Path,
     maximum_size: u64,
+    tool_name: &str,
+    completed_bytes: u64,
+    total_bytes: u64,
+    progress: &ProgressReporter,
 ) -> AppResult<()> {
     let config = ureq::Agent::config_builder()
         .timeout_global(Some(Duration::from_secs(10 * 60)))
@@ -333,14 +431,26 @@ fn download_verified(
         .limit(maximum_size.saturating_add(1))
         .reader();
     let mut output = File::create(destination)?;
-    let copied = std::io::copy(&mut reader, &mut output)?;
+    let copied = copy_asset_with_progress(
+        &mut reader,
+        &mut output,
+        &TransferSpec {
+            expected_size: asset.size,
+            maximum_size,
+            tool_name,
+            completed_bytes,
+            total_bytes,
+            progress,
+        },
+    )?;
     output.flush()?;
     output.sync_all()?;
-    if copied != asset.size || copied > maximum_size {
-        return Err(AppError::ToolUpdate(
-            "release asset size did not match metadata".into(),
-        ));
-    }
+    progress.report(
+        ToolUpdateStage::Verifying,
+        Some(tool_name),
+        completed_bytes + copied,
+        total_bytes,
+    );
     let actual = sha256_file_sync(destination)?;
     if !actual.eq_ignore_ascii_case(&asset.sha256) {
         return Err(AppError::ToolUpdate(
@@ -348,6 +458,46 @@ fn download_verified(
         ));
     }
     Ok(())
+}
+
+fn copy_asset_with_progress(
+    reader: &mut impl Read,
+    output: &mut impl Write,
+    transfer: &TransferSpec<'_>,
+) -> AppResult<u64> {
+    let mut copied = 0;
+    let mut buffer = [0_u8; 1024 * 1024];
+    transfer.progress.report(
+        ToolUpdateStage::Downloading,
+        Some(transfer.tool_name),
+        transfer.completed_bytes,
+        transfer.total_bytes,
+    );
+    loop {
+        let read = reader.read(&mut buffer)?;
+        if read == 0 {
+            break;
+        }
+        copied += read as u64;
+        if copied > transfer.expected_size || copied > transfer.maximum_size {
+            return Err(AppError::ToolUpdate(
+                "release asset size did not match metadata".into(),
+            ));
+        }
+        output.write_all(&buffer[..read])?;
+        transfer.progress.report(
+            ToolUpdateStage::Downloading,
+            Some(transfer.tool_name),
+            transfer.completed_bytes + copied,
+            transfer.total_bytes,
+        );
+    }
+    if copied != transfer.expected_size {
+        return Err(AppError::ToolUpdate(
+            "release asset size did not match metadata".into(),
+        ));
+    }
+    Ok(copied)
 }
 
 fn extract_ffmpeg(archive_path: &Path, ffmpeg: &Path, ffprobe: &Path) -> AppResult<()> {
@@ -434,9 +584,16 @@ fn validated_version(value: &str) -> AppResult<String> {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs::File, io::Write};
+    use std::{
+        fs::File,
+        io::{Cursor, Write},
+        sync::{Arc, Mutex},
+    };
 
-    use super::{GithubAsset, GithubRelease, extract_ffmpeg, select_asset, validated_version};
+    use super::{
+        GithubAsset, GithubRelease, ProgressReporter, ToolUpdateStage, TransferSpec,
+        copy_asset_with_progress, extract_ffmpeg, select_asset, validated_version,
+    };
     use zip::{CompressionMethod, ZipWriter, write::SimpleFileOptions};
 
     fn release(url: &str, digest: Option<&str>) -> GithubRelease {
@@ -499,6 +656,85 @@ mod tests {
         assert_eq!(validated_version("v2026.08.19").unwrap(), "2026.08.19");
         assert!(validated_version("<html>failure</html>").is_err());
         assert!(validated_version("--output").is_err());
+    }
+
+    #[test]
+    fn asset_transfer_reports_real_bytes_across_two_downloads() {
+        let events = Arc::new(Mutex::new(Vec::new()));
+        let captured = Arc::clone(&events);
+        let progress = ProgressReporter {
+            operation_id: "test-operation".into(),
+            emit: Arc::new(move |event| captured.lock().unwrap().push(event)),
+        };
+        let mut first_output = Vec::new();
+        let mut second_output = Vec::new();
+        assert_eq!(
+            copy_asset_with_progress(
+                &mut Cursor::new(b"abcd"),
+                &mut first_output,
+                &TransferSpec {
+                    expected_size: 4,
+                    maximum_size: 64,
+                    tool_name: "yt-dlp",
+                    completed_bytes: 0,
+                    total_bytes: 10,
+                    progress: &progress,
+                },
+            )
+            .unwrap(),
+            4
+        );
+        assert_eq!(
+            copy_asset_with_progress(
+                &mut Cursor::new(b"123456"),
+                &mut second_output,
+                &TransferSpec {
+                    expected_size: 6,
+                    maximum_size: 64,
+                    tool_name: "FFmpeg",
+                    completed_bytes: 4,
+                    total_bytes: 10,
+                    progress: &progress,
+                },
+            )
+            .unwrap(),
+            6
+        );
+        assert_eq!(first_output, b"abcd");
+        assert_eq!(second_output, b"123456");
+        let bytes: Vec<_> = events
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|event| matches!(event.stage, ToolUpdateStage::Downloading))
+            .map(|event| (event.downloaded_bytes, event.total_bytes))
+            .collect();
+        assert_eq!(bytes, [(0, 10), (4, 10), (4, 10), (10, 10)]);
+    }
+
+    #[test]
+    fn asset_transfer_rejects_bytes_beyond_release_size() {
+        let progress = ProgressReporter {
+            operation_id: "test-operation".into(),
+            emit: Arc::new(|_| {}),
+        };
+        let mut output = Vec::new();
+        assert!(
+            copy_asset_with_progress(
+                &mut Cursor::new(b"abc"),
+                &mut output,
+                &TransferSpec {
+                    expected_size: 2,
+                    maximum_size: 64,
+                    tool_name: "yt-dlp",
+                    completed_bytes: 0,
+                    total_bytes: 2,
+                    progress: &progress,
+                },
+            )
+            .is_err()
+        );
+        assert!(output.is_empty());
     }
 
     #[test]
