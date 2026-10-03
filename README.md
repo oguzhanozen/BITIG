@@ -1,10 +1,22 @@
 # BITIG
 
-**Supported platform: Windows x64**
+**Save it. Sort it. Keep it.**
 
-BITIG is a local-first desktop media downloader and organized media library built with Tauri 2, Rust, React, TypeScript, and SQLite.
+BITIG is a local-first Windows desktop media downloader and organized media library. Paste a supported media URL, analyze the available video and audio formats, choose what to save, follow the download, then play and organize the result in nested virtual folders.
 
-The v0.1 product flow is URL analysis, normalized video/audio selection, managed download and verification, then playback and organization in nested virtual folders.
+Built with Tauri 2, Rust, React, TypeScript, and SQLite. Downloads are managed and verified before they enter the library.
+
+**Supported platform:** Windows x64 · [Get the latest release](https://github.com/oguzhanozen/BITIG/releases/latest)
+
+## See BITIG in action
+
+[![BITIG desktop demo showing a media analysis and video/audio format choices](docs/media/bitig-demo.jpg)](docs/media/bitig-demo.mp4)
+
+[Watch the 21-second demo (MP4)](docs/media/bitig-demo.mp4)
+
+The video follows the app's flow: paste a link → analyze → choose video or audio → start a download → watch its progress → find the saved media in the library and folders. Its URL, media title, thumbnail, and download progress are fictional demonstration data; the interface is recreated from BITIG's source.
+
+Demo music: [“Happy Beats & Business Moves Vol. 12”](https://ende.app/en/song/12881-happy-beats-business-moves-vol-12) by Sascha Ende, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The excerpt was trimmed and its volume faded. UI sound effects are from Kenney (CC0).
 
 ## Legal / acceptable use
 
