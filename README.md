@@ -10,13 +10,9 @@ Built with Tauri 2, Rust, React, TypeScript, and SQLite. Downloads are managed a
 
 ## See BITIG in action
 
-[![BITIG desktop demo showing a media analysis and video/audio format choices](docs/media/bitig-demo.jpg)](docs/media/bitig-demo.mp4)
+![BITIG desktop demo showing a media analysis, format choices, download progress, and the organized library](docs/media/bitig-demo.gif)
 
-[Watch the 21-second demo (MP4)](docs/media/bitig-demo.mp4)
-
-The video follows the app's flow: paste a link → analyze → choose video or audio → start a download → watch its progress → find the saved media in the library and folders. Its URL, media title, thumbnail, and download progress are fictional demonstration data; the interface is recreated from BITIG's source.
-
-Demo music: [“Happy Beats & Business Moves Vol. 12”](https://ende.app/en/song/12881-happy-beats-business-moves-vol-12) by Sascha Ende, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The excerpt was trimmed and its volume faded. UI sound effects are from Kenney (CC0).
+The 15-second looping preview follows the app's flow: paste a link → analyze → choose video or audio → start a download → watch its progress → find the saved media in the library and folders. Its URL, media title, thumbnail, and download progress are fictional demonstration data; the interface is recreated from BITIG's source.
 
 ## Legal / acceptable use
 
