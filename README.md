@@ -12,7 +12,7 @@ Built with Tauri 2, Rust, React, TypeScript, and SQLite. Downloads are managed a
 
 ![BITIG desktop demo showing a media analysis, format choices, download progress, and the organized library](docs/media/bitig-demo.gif)
 
-The 15-second looping preview follows the app's flow: paste a link → analyze → choose video or audio → start a download → watch its progress → find the saved media in the library and folders. Its URL, media title, thumbnail, and download progress are fictional demonstration data; the interface is recreated from BITIG's source.
+The 15-second looping preview follows the app's flow: paste a link → analyze → choose video or audio → start a download → watch its progress → find the saved media in the library and folders. 
 
 ## Legal / acceptable use
 
