@@ -34,7 +34,7 @@ thiserror = "=2.0.19"
 tokio = { version = "=1.53.1", features = ["process", "sync", "time", "fs", "io-util", "macros", "rt-multi-thread"] }
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter", "fmt"] }
-ureq = "=3.3.0"
+ureq = "=3.4.2"
 url = "=2.5.8"
 uuid = { version = "=1.24.0", features = ["v7", "serde"] }
 zip = { version = "=8.6.0", default-features = false, features = ["deflate"] }
