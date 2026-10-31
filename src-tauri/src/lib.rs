@@ -4,6 +4,7 @@ mod database;
 mod domain;
 mod downloader;
 mod errors;
+mod installer;
 mod repositories;
 mod services;
 mod storage;
@@ -14,6 +15,9 @@ pub use domain::download::DownloadStatus;
 pub use errors::AppError;
 
 pub fn run() {
+    if let Some(code) = installer::run_if_requested(std::env::args_os().skip(1).collect()) {
+        std::process::exit(code);
+    }
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -53,6 +57,7 @@ pub fn run() {
             commands::downloads::get_download,
             commands::downloads::list_downloads,
             commands::tools::get_tool_status,
+            commands::tools::get_installer_tool_preference,
             commands::tools::install_tool_updates,
             commands::tools::restart_app,
         ])

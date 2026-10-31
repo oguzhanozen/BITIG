@@ -1,10 +1,12 @@
 FFmpeg 9.0.1 Essentials Build — Source and Build Information
 ===========================================================
 
-BITIG for Windows bundles unmodified ffmpeg.exe and ffprobe.exe files from the
-Gyan FFmpeg 9.0.1 essentials build. The binaries are separate programs invoked
-as subprocesses. They are licensed under GNU GPL version 3; the complete GPLv3
-text is included as FFmpeg-GPLv3.txt.
+BITIG's development/reference ffmpeg.exe and ffprobe.exe files come unmodified
+from the Gyan FFmpeg 9.0.1 essentials build. The Online Installer does not embed
+media tools; this baseline is not a promise of the versions obtained during
+setup. The binaries are separate programs invoked as
+subprocesses. Both inspected binaries report GNU GPL version 3 or later
+(GPL-3.0-or-later); the complete GPLv3 text is included as FFmpeg-GPLv3.txt.
 
 Binary release and build provenance:
 https://github.com/GyanD/codexffmpeg/releases/tag/9.0.1
@@ -54,3 +56,57 @@ FFmpeg includes code derived from the Independent JPEG Group in
 libavcodec/jfdctfst.c, libavcodec/jfdctint_template.c, and
 libavcodec/jrevdct.c. BITIG makes no additions, deletions, or other changes to
 those files. See FFmpeg-UPSTREAM-LICENSE.md for the exact upstream record.
+
+Online Installer and Updated FFmpeg Builds
+==========================================
+
+The NSIS Online Installer invokes the headless bootstrap before replacing an
+existing application. It reuses verified BITIG-managed tools offline or
+downloads missing tools
+over HTTPS with SHA-256 verification. Later in-app updates can also install
+different builds. FFmpeg and ffprobe always come together from one archive.
+GyanD is the selected Windows binary distributor, not the FFmpeg development
+project. Downloading a binary online does not remove its license obligations.
+
+After any required restart, About & Tools shows the selected FFmpeg build
+version (ffprobe has no separate version row). Managed installations are under
+AppLocalData/tools/install-<UUIDv7>/. Match the version to manifest.json there;
+ffmpegVersion identifies the pair, while ffmpegSha256 and ffprobeSha256 record
+the individual binary hashes. The manifest does not record an upstream commit
+or build configuration. Reference binary provenance remains in the
+repository's src-tauri/binaries/manifest.json and THIRD-PARTY-SOURCES.md.
+
+Open the matching provider release for source and build provenance:
+https://github.com/GyanD/codexffmpeg/releases
+Follow the upstream FFmpeg Source commit/tag explicitly linked by that release.
+For 9.0.1 the release body links bf1b838f2a, resolved to the full FFmpeg revision
+recorded above. A GyanD repository commit is not the FFmpeg upstream commit.
+Never derive an assumed FFmpeg revision by adding n to a provider release tag.
+Use the reported revision's source tree or its verified source archive. If the
+relation is missing, request verified provenance instead of substituting a
+different version's source.
+
+Run these commands against the actual selected executables, using their full
+managed paths rather than another installation on PATH:
+ffmpeg.exe -version
+ffmpeg.exe -L
+ffprobe.exe -version
+ffprobe.exe -L
+
+The -version output reports version and build configuration; -L reports the
+binary's license. These checks were repeated for the reference 9.0.1 binaries:
+both report --enable-gpl, --enable-version3, and GPL version 3 or later. Do not
+assume a subsequent download has the same configuration, license, binary hash,
+or upstream commit as this reference build.
+
+For dependency source code and necessary build materials, consult the actual
+release's provider documentation and the dependencies' own upstream license
+and corresponding-source instructions, including:
+https://www.gyan.dev/ffmpeg/builds/
+https://ffmpeg.org/legal.html
+The FFmpeg source archive alone does not establish complete corresponding
+source for all external libraries in the binary. FFmpeg-UPSTREAM-LICENSE.md
+is a preserved licensing record from the revision named in its header; consult
+the installed build's actual source revision for version-specific information.
+Before Online Installer publication, accessible notices and corresponding
+source/build materials must be verified for the versions it can deliver.

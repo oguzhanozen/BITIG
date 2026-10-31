@@ -76,6 +76,8 @@ export interface DownloadJob {
 
 export type ToolUpdateState = "not_checked" | "current" | "update_available" | "check_failed";
 
+export type InstallerToolPreference = "enabled" | "disabled";
+
 export interface ToolVersionStatus {
   id: string;
   name: string;

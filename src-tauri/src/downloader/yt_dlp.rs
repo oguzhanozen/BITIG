@@ -79,6 +79,7 @@ impl MediaExtractor for YtDlpExtractor {
             .runner
             .run(ProcessSpec {
                 program: self.executable.clone(),
+                is_yt_dlp: true,
                 args,
                 timeout: Duration::from_secs(45),
                 stdout_limit: 16 * 1024 * 1024,

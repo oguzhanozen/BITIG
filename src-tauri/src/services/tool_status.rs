@@ -6,12 +6,15 @@ use tokio::sync::RwLock;
 
 use crate::{
     domain::{ToolStatusReport, ToolUpdateState, ToolVersionStatus},
-    downloader::InstalledToolVersions,
+    downloader::{
+        InstalledToolVersions, comparable_version, is_strictly_newer, verify_yt_dlp_version,
+    },
     errors::{AppError, AppResult},
 };
 
+use super::tool_updates::fetch_ffmpeg_version;
+
 const YT_DLP_LATEST_URL: &str = "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest";
-const FFMPEG_LATEST_URL: &str = "https://www.gyan.dev/ffmpeg/builds/release-version";
 
 #[derive(Clone)]
 pub struct ToolStatusService {
@@ -77,25 +80,43 @@ fn not_checked(id: &str, name: &str, installed_version: &str) -> ToolVersionStat
         state: ToolUpdateState::NotChecked,
         integrity_verified: true,
         update_supported: true,
-        message: Some("Check for updates, then install verified releases here.".into()),
+        message: Some(
+            if id == "yt-dlp" && verify_yt_dlp_version(installed_version).is_err() {
+                AppError::UnsafeYtDlp.public_message()
+            } else {
+                "Check for updates, then install verified releases here.".into()
+            },
+        ),
     }
 }
 
-fn checked_status(
+pub(super) fn checked_status(
     id: &str,
     name: &str,
     installed_version: &str,
     latest: Result<String, ()>,
 ) -> ToolVersionStatus {
-    match latest {
+    let latest = latest.and_then(|version| {
+        if (comparable_version(installed_version).is_some()
+            || (id == "yt-dlp" && verify_yt_dlp_version(&version).is_ok()))
+            && comparable_version(&version).is_some()
+        {
+            Ok(version)
+        } else {
+            Err(())
+        }
+    });
+    let mut status = match latest {
         Ok(latest_version) => ToolVersionStatus {
             id: id.into(),
             name: name.into(),
             installed_version: installed_version.into(),
-            state: if is_at_least(installed_version, &latest_version) {
-                ToolUpdateState::Current
-            } else {
+            state: if is_strictly_newer(&latest_version, installed_version)
+                || (id == "yt-dlp" && comparable_version(installed_version).is_none())
+            {
                 ToolUpdateState::UpdateAvailable
+            } else {
+                ToolUpdateState::Current
             },
             latest_version: Some(latest_version),
             integrity_verified: true,
@@ -110,9 +131,15 @@ fn checked_status(
             state: ToolUpdateState::CheckFailed,
             integrity_verified: true,
             update_supported: true,
-            message: Some("The update service could not be reached.".into()),
+            message: Some(
+                "Update information could not be verified. Please try again later.".into(),
+            ),
         },
+    };
+    if id == "yt-dlp" && verify_yt_dlp_version(installed_version).is_err() {
+        status.message = Some(AppError::UnsafeYtDlp.public_message());
     }
+    status
 }
 
 fn check_latest_versions() -> LatestVersions {
@@ -123,7 +150,7 @@ fn check_latest_versions() -> LatestVersions {
     let agent: ureq::Agent = config.into();
     LatestVersions {
         yt_dlp: fetch_yt_dlp(&agent),
-        ffmpeg: fetch_body(&agent, FFMPEG_LATEST_URL).and_then(|body| validate_version(&body)),
+        ffmpeg: fetch_ffmpeg_version(&agent).map_err(|_| ()),
     }
 }
 
@@ -159,27 +186,61 @@ fn validate_version(value: &str) -> Result<String, ()> {
     .ok_or(())
 }
 
-pub(crate) fn is_at_least(installed: &str, latest: &str) -> bool {
-    version_numbers(installed) >= version_numbers(latest)
-}
-
-fn version_numbers(value: &str) -> Vec<u32> {
-    value
-        .split(|character: char| !character.is_ascii_digit())
-        .filter(|part| !part.is_empty())
-        .filter_map(|part| part.parse().ok())
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{is_at_least, validate_version};
+    use super::{ToolUpdateState, checked_status, validate_version};
+
+    #[tokio::test]
+    async fn unsafe_yt_dlp_status_explains_the_block_and_permits_manual_repair() {
+        for version in ["2026.10.25", "nightly"] {
+            let service = super::ToolStatusService::new(crate::downloader::InstalledToolVersions {
+                yt_dlp: version.into(),
+                ffmpeg: "9.0.1".into(),
+            });
+            let report = service.report(false).await.unwrap();
+            assert!(
+                report.tools[0]
+                    .message
+                    .as_ref()
+                    .unwrap()
+                    .contains("2026.10.26")
+            );
+            assert!(report.tools[0].update_supported);
+            let checked = checked_status("yt-dlp", "yt-dlp", version, Ok("2026.10.26".into()));
+            assert!(matches!(checked.state, ToolUpdateState::UpdateAvailable));
+            assert!(checked.message.unwrap().contains("2026.10.26"));
+            assert!(
+                !report.tools[1]
+                    .message
+                    .as_ref()
+                    .unwrap()
+                    .contains("2026.10.26")
+            );
+        }
+    }
+
+    #[test]
+    fn trailing_zero_components_do_not_advertise_an_update() {
+        let status = super::checked_status("ffmpeg", "FFmpeg", "9.0.1", Ok("9.0.1.0".into()));
+        assert!(matches!(
+            status.state,
+            crate::domain::ToolUpdateState::Current
+        ));
+    }
 
     #[test]
     fn compares_date_and_semantic_versions() {
-        assert!(is_at_least("2026.07.04", "2026.07.04"));
-        assert!(!is_at_least("2026.07.04", "2026.08.01"));
-        assert!(is_at_least("9.0 essentials build", "9.0"));
+        for (installed, latest, expected) in [
+            ("2026.07.04", "2026.07.04", ToolUpdateState::Current),
+            ("2026.07.04", "2026.08.01", ToolUpdateState::UpdateAvailable),
+            ("9.0 essentials build", "9.0", ToolUpdateState::Current),
+        ] {
+            let status = checked_status("tool", "Tool", installed, Ok(latest.into()));
+            assert_eq!(
+                std::mem::discriminant(&status.state),
+                std::mem::discriminant(&expected)
+            );
+        }
     }
 
     #[test]
@@ -187,5 +248,97 @@ mod tests {
         assert_eq!(validate_version(" v9.0 \n").unwrap(), "9.0");
         assert!(validate_version("<html>failure</html>").is_err());
         assert!(validate_version(&"x".repeat(65)).is_err());
+    }
+
+    #[test]
+    fn update_states_follow_the_startup_comparison_policy() {
+        for (id, installed, latest, expected) in [
+            ("ffmpeg", "9.0.1", "9.0.2", "update_available"),
+            ("ffmpeg", "9.0.1", "9.0.1", "current"),
+            ("ffmpeg", "9.0.1", "8.1.3", "current"),
+            ("ffmpeg", "9.0.1", "9.0.1.0", "current"),
+            ("ffmpeg", "9.0", "9.0.0", "current"),
+            (
+                "ffmpeg",
+                "9.0.1 essentials build",
+                "9.0.2 essentials build",
+                "update_available",
+            ),
+            (
+                "ffmpeg",
+                "9.0.1 essentials build",
+                "9.0.1.0 essentials build",
+                "current",
+            ),
+            ("ffmpeg", "9.0.1", "10.0-rc1", "check_failed"),
+            ("ffmpeg", "10.0-rc1", "10.0", "check_failed"),
+            ("ffmpeg", "9.0.1", "N-123456-gabcdef", "check_failed"),
+            ("ffmpeg", "N-123456-gabcdef", "9.0.2", "check_failed"),
+            ("ffmpeg", "9.0.1", "", "check_failed"),
+            ("ffmpeg", "", "9.0.2", "check_failed"),
+            ("ffmpeg", "9.0.1", "9.18446744073709551616", "check_failed"),
+            ("ffmpeg", "18446744073709551616", "9.0.2", "check_failed"),
+            ("yt-dlp", "2026.08.19", "2026.09.10", "update_available"),
+            ("yt-dlp", "2026.08.19", "2026.08.19", "current"),
+            ("yt-dlp", "2026.08.19", "2026.07.01", "current"),
+            (
+                "yt-dlp",
+                "2026.08.19",
+                "2026.08.19.123456",
+                "update_available",
+            ),
+            ("yt-dlp", "2026.08.19.123456", "2026.08.19", "current"),
+            ("yt-dlp", "2026.08.19", "2026.09.10-nightly", "check_failed"),
+            ("yt-dlp", "2026.08.19", "nightly", "check_failed"),
+            ("yt-dlp", "invalid", "2026.09.10", "check_failed"),
+            ("yt-dlp", "2026.08.19", "2026..09", "check_failed"),
+        ] {
+            let status = checked_status(id, id, installed, Ok(latest.into()));
+            assert_eq!(
+                serde_json::to_value(&status.state).unwrap(),
+                expected,
+                "{installed} -> {latest}"
+            );
+            assert_eq!(
+                super::is_strictly_newer(latest, installed),
+                expected == "update_available"
+            );
+            assert!(status.integrity_verified);
+            assert!(status.update_supported);
+            if expected == "check_failed" {
+                assert!(status.latest_version.is_none());
+                assert!(status.message.is_some());
+            } else {
+                assert_eq!(status.latest_version.as_deref(), Some(latest));
+            }
+        }
+    }
+
+    #[test]
+    fn failed_metadata_check_returns_a_safe_message() {
+        let status = checked_status("ffmpeg", "FFmpeg", "9.0.1", Err(()));
+        assert!(matches!(status.state, ToolUpdateState::CheckFailed));
+        assert!(status.latest_version.is_none());
+        assert_eq!(
+            status.message.as_deref(),
+            Some("Update information could not be verified. Please try again later.")
+        );
+    }
+
+    #[tokio::test]
+    async fn offline_report_preserves_not_checked_and_capability_fields() {
+        let service = super::ToolStatusService::new(crate::downloader::InstalledToolVersions {
+            yt_dlp: "2026.08.19".into(),
+            ffmpeg: "9.0.1 essentials build".into(),
+        });
+        let report = service.report(false).await.unwrap();
+        assert!(report.checked_at.is_none());
+        assert_eq!(report.tools.len(), 2);
+        for tool in report.tools {
+            assert!(matches!(tool.state, ToolUpdateState::NotChecked));
+            assert!(tool.latest_version.is_none());
+            assert!(tool.integrity_verified);
+            assert!(tool.update_supported);
+        }
     }
 }

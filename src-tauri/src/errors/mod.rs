@@ -11,6 +11,10 @@ pub enum AppError {
     InvalidUrl,
     #[error("The media analysis tool is not available")]
     ToolUnavailable,
+    #[error(
+        "yt-dlp could not be verified as version 2026.10.26 or newer. Open About & Tools, install media tool updates, then restart BITIG."
+    )]
+    UnsafeYtDlp,
     #[error("A bundled media tool failed its integrity check: {0}")]
     ToolIntegrity(String),
     #[error("The media tools could not be updated: {0}")]
@@ -54,6 +58,7 @@ impl AppError {
             Self::Validation(_) => "validation",
             Self::InvalidUrl => "invalid_url",
             Self::ToolUnavailable => "tool_unavailable",
+            Self::UnsafeYtDlp => "yt_dlp_unsafe",
             Self::ToolIntegrity(_) => "tool_integrity_failed",
             Self::ToolUpdate(_) => "tool_update_failed",
             Self::Analysis(_) => "analysis_failed",

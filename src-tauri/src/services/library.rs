@@ -85,7 +85,10 @@ impl LibraryService {
                 "export file extension must match the media container".into(),
             ));
         }
-        tokio::fs::copy(source, destination).await?;
+        let destination = destination.to_path_buf();
+        tokio::task::spawn_blocking(move || std::fs::copy(source, destination))
+            .await
+            .map_err(|error| AppError::Storage(error.to_string()))??;
         Ok(())
     }
 
@@ -160,5 +163,76 @@ impl LibraryService {
             tracing::warn!(%error, path = %quarantine.display(), "deleted media quarantine cleanup failed");
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn export_validates_paths_and_copies_without_changing_managed_media() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().join("managed");
+        let paths = AppPaths {
+            database: root.join("library.db"),
+            media: root.join("media"),
+            thumbnails: root.join("thumbnails"),
+            temp: root.join("temp"),
+            tools: root.join("tools"),
+            logs: root.join("logs"),
+            root: Arc::new(root),
+        };
+        std::fs::create_dir_all(&paths.media).unwrap();
+        let source = paths.media.join("example.mp4");
+        std::fs::write(&source, b"exported").unwrap();
+        let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+        sqlx::query("INSERT INTO media (id, title, media_type, source_url, source_platform, source_id, file_path, container, file_size)
+            VALUES ('example', 'Example', 'video', 'https://example.com', 'Example', 'example', 'media/example.mp4', 'mp4', 8)")
+            .execute(&pool).await.unwrap();
+        let library = LibraryService::new(Arc::new(MediaRepository::new(pool.clone())), paths);
+
+        for destination in [
+            Path::new("relative.mp4").to_path_buf(),
+            directory.path().join("managed/../traversal.mp4"),
+            directory.path().join("wrong.mp3"),
+        ] {
+            assert!(matches!(
+                library
+                    .export("example", destination.to_str().unwrap())
+                    .await,
+                Err(AppError::Validation(_))
+            ));
+            assert!(!destination.exists());
+        }
+        assert!(matches!(
+            library.export("example", source.to_str().unwrap()).await,
+            Err(AppError::UnsafePath)
+        ));
+        let destination = directory.path().join("export.MP4");
+        library
+            .export("example", destination.to_str().unwrap())
+            .await
+            .unwrap();
+        assert_eq!(std::fs::read(&destination).unwrap(), b"exported");
+        assert_eq!(std::fs::read(&source).unwrap(), b"exported");
+        assert!(matches!(
+            library
+                .export("missing", destination.to_str().unwrap())
+                .await,
+            Err(AppError::NotFound)
+        ));
+        sqlx::query("UPDATE media SET file_path = '../outside.mp4' WHERE id = 'example'")
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert!(matches!(
+            library
+                .export("example", destination.to_str().unwrap())
+                .await,
+            Err(AppError::UnsafePath)
+        ));
+        assert_eq!(std::fs::read(destination).unwrap(), b"exported");
     }
 }

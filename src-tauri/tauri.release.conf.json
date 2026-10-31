@@ -4,15 +4,23 @@
     "active": true,
     "targets": ["nsis"],
     "icon": ["icons/icon.ico"],
+    "licenseFile": "../licenses/INSTALLER-TERMS.txt",
     "resources": {
       "../licenses/": "licenses/",
       "../LICENSE": "licenses/BITIG-MIT.txt",
       "../THIRD-PARTY-SOURCES.md": "licenses/THIRD-PARTY-SOURCES.md"
     },
-    "externalBin": [
-      "binaries/yt-dlp",
-      "binaries/ffmpeg",
-      "binaries/ffprobe"
-    ]
+    "externalBin": [],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "embedBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "template": "nsis/installer.nsi",
+        "installerHooks": "nsis/installer-hooks.nsh"
+      }
+    }
   }
 }

@@ -1,0 +1,242 @@
+BITIG - Installer Terms and Third-Party Software Notices
+======================================================
+
+Distribution status: The Windows x64 release configuration implements the
+Online Installer behavior described below, without embedded media tools.
+Previously published bundled installers retain their original behavior.
+Publication remains subject to applicable license and corresponding-source
+requirements and the project's release verification checks.
+
+PART I - BITIG Terms of Use
+==========================
+
+1. Purpose and permitted use
+
+BITIG provides media analysis, downloading, local playback, and local library
+management for content you have the right to download and store. A local
+yt-dlp executable analyzes media URLs and downloads selected media. FFmpeg
+and ffprobe support merging, conversion, and media validation. Saved media
+can also be exported as a local file copy.
+
+Use these features consistently with applicable copyright law, any required
+permissions, and lawful exceptions. A working download link does not itself
+establish permission. Observe third-party platform terms that apply to your
+use. BITIG does not provide DRM, paywall, or authentication bypass features.
+
+2. Local features and online operations
+
+The saved library can be browsed, organized, and played locally while offline,
+subject to the available files and supported formats. Analyzing online media
+and downloading it require access to the relevant third-party services.
+Missing tool installation and tool update checks or downloads also require
+internet access. Part III explains the associated storage and connections.
+
+3. Required media tools and online setup
+
+The Online Installer does not embed yt-dlp, FFmpeg, or ffprobe in
+setup.exe. These tools are required for BITIG's core analysis, downloading,
+and media processing features; they are independent open-source projects.
+
+Setup first reuses existing verified BITIG-managed tools, without a network
+request when a valid set is available. Otherwise it downloads yt-dlp from
+the yt-dlp project's GitHub Releases and the FFmpeg essentials build from
+GyanD/codexffmpeg GitHub Releases. FFmpeg and ffprobe are taken together from
+the same archive. GyanD is the selected Windows binary distributor, not the
+FFmpeg development project.
+
+Downloads use HTTPS and SHA-256 verification, with size and archive safety
+checks before atomic installation. Setup cannot complete successfully if
+the required tools cannot be obtained and verified. Independent yt-dlp or
+FFmpeg installations on the system PATH are not used by this installer.
+Previously verified BITIG tool installations are retained for safety because
+another running BITIG process may still use them; disk use can grow over time.
+
+4. Optional automatic media tool updates
+
+Automatic media tool updates are optional and off by default. Accepting these
+Terms does not authorize automatic updates. The installer update choice is
+separate, and the preference can later be changed in About & Tools. An existing
+saved enabled/disabled application preference takes priority over the
+installer preference. Manual tool checks and installation remain available.
+Newly installed updates require restarting BITIG before they are used.
+This feature updates media tools, not the BITIG application itself.
+
+5. Technical limitations, warranty, and liability
+
+Platform changes, network failures, unsupported formats, or tool limitations
+can prevent analysis, downloading, processing, or playback. Continued support
+for a particular service or format and uninterrupted operation are not
+promised. Keep appropriate backups of media that matters to you.
+
+Subject to mandatory applicable law, BITIG is provided "as is" without a
+promise that it will be error-free, meet every need, or remain compatible with
+third-party services. Warranty and liability provisions in the applicable
+open-source licenses continue to apply. Nothing here excludes or limits
+liability or consumer rights that cannot lawfully be excluded or limited,
+including liability for intentional misconduct or gross negligence where
+such exclusion is prohibited.
+
+6. Open-source rights and project information
+
+BITIG's own source code is MIT-licensed, with the notice:
+Copyright (c) 2026 BITIG contributors.
+
+These Terms do not replace, narrow, or add restrictions to the permissions
+granted by the MIT License or any third-party open-source license, including
+rights to use, copy, modify, redistribute, and obtain corresponding source
+where the relevant license provides them. The applicable license governs
+that component if anything in these Terms conflicts with it.
+
+yt-dlp, FFmpeg, and ffprobe run as separate executable subprocesses. This is
+a technical description, not a conclusion that every distribution is exempt
+from GPL obligations. Online downloading does not remove applicable license
+and corresponding-source obligations.
+
+Project: https://github.com/oguzhanozen/BITIG
+Project issue contact: https://github.com/oguzhanozen/BITIG/issues
+Distributor: oguzhanozen
+Contact: https://github.com/oguzhanozen/BITIG/issues
+
+PART II - Third-Party Software and Licensing Information
+=======================================================
+
+1. yt-dlp
+
+yt-dlp performs media link analysis and downloading. Its core source code is
+under the Unlicense. The Windows PyInstaller executable contains third-party
+code; upstream identifies the combined executable as GNU GPL version 3 or
+later (GPLv3+). The core's Unlicense does not make the whole executable
+Unlicense-only. Component-specific notices remain applicable.
+
+Official project and licensing explanation:
+https://github.com/yt-dlp/yt-dlp
+https://github.com/yt-dlp/yt-dlp/blob/master/README.md#licensing
+Official releases: https://github.com/yt-dlp/yt-dlp/releases
+
+The preserved baseline notice includes, for example, mutagen under
+GPL-2.0-or-later. Consult the installed release's THIRD_PARTY_LICENSES.txt
+for its component list and complete licenses; a current master-branch notice
+does not establish the contents of an older or newer executable.
+
+2. FFmpeg and ffprobe
+
+FFmpeg and ffprobe perform media processing and analysis, including merging,
+conversion, and validation. BITIG uses unmodified GyanD Windows essentials
+build executables from the same archive. The inspected 9.0.1 reference build
+reports --enable-gpl and --enable-version3. Both binaries' -L output states
+GNU GPL version 3 or later (GPLv3+). Future builds must be checked individually;
+their license, configuration, hashes, and source revision must not be inferred
+from the 9.0.1 build.
+
+This software is based in part on the work of the Independent JPEG Group.
+BITIG makes no additions, deletions, or other changes to that code in the
+unmodified reference binaries. The preserved FFmpeg upstream licensing
+record and source/build document contain the related attribution.
+
+FFmpeg project: https://github.com/FFmpeg/FFmpeg
+FFmpeg legal information: https://ffmpeg.org/legal.html
+Selected binary distributor: https://github.com/GyanD/codexffmpeg
+Build information and dependencies: https://www.gyan.dev/ffmpeg/builds/
+
+3. License documents and their locations
+
+Repository paths below are relative to the BITIG source repository. Installed
+paths are relative to the BITIG installation directory, not AppLocalData:
+
+- Repository LICENSE -> installed licenses/BITIG-MIT.txt: BITIG MIT License.
+- Repository THIRD-PARTY-SOURCES.md -> installed
+  licenses/THIRD-PARTY-SOURCES.md: reference provenance and source access.
+- The following repository licenses/ files map to the same licenses/
+  filenames in the installation:
+  yt-dlp-Unlicense.txt - yt-dlp core license.
+  yt-dlp-THIRD-PARTY-LICENSES.txt - preserved reference executable notices.
+  FFmpeg-GPLv3.txt - complete GNU GPL version 3 text, also available for the
+    GPLv3+ executable licensing described above.
+  FFmpeg-UPSTREAM-LICENSE.md - preserved upstream licensing record; its header
+    identifies its source revision. Check the actual build's source as well.
+  FFmpeg-SOURCE-AND-BUILD-INFO.txt - reference build configuration and sources.
+  Rust-THIRD-PARTY-NOTICES.txt - Rust dependency notices and license texts.
+  Node-THIRD-PARTY-NOTICES.txt - shipped JavaScript/React dependency notices.
+  PressStart2P-OFL.txt - SIL Open Font License 1.1 for Press Start 2P.
+  INSTALLER-TERMS.txt - this document.
+
+This resource mapping is checked against the actual installer package;
+accessibility after installation must also be validated. Preserved
+reference notices are not a claim to cover every later downloaded release.
+
+4. Sources for the version actually installed
+
+yt-dlp 2026.08.19 and FFmpeg 9.0.1 essentials build are development/reference
+baselines, not promised Online Installer versions. After restarting following
+an update, About & Tools shows the selected yt-dlp and FFmpeg build versions.
+ffprobe belongs to that FFmpeg build; there is no separate ffprobe version row.
+
+Managed installations are under AppLocalData/tools/install-<UUIDv7>/.
+Their manifest.json records ytDlpVersion, ffmpegVersion, ytDlpSha256,
+ffmpegSha256, and ffprobeSha256. The two tool groups can be selected from
+different installations, so match the displayed versions to the relevant
+manifest(s). A manifest does not contain the upstream source commit or build
+configuration. Current release startup ignores legacy packaged tools;
+the repository's src-tauri/binaries/manifest.json preserves development and
+older packaged-tool provenance.
+
+For yt-dlp, open the official Releases page above and select the installed
+version's release. Follow its tag/commit to that source tree and its source
+archive, LICENSE, and THIRD_PARTY_LICENSES.txt. Use that release's component
+source information, including upstream's corresponding-source instructions
+for bundled dependencies, rather than treating the core archive as all of
+the executable's corresponding source.
+
+For FFmpeg, find the matching build on:
+https://github.com/GyanD/codexffmpeg/releases
+Open that release's Source link to the upstream FFmpeg commit or tag explicitly
+reported by the provider. Use that revision's source tree or source archive.
+Do not construct a presumed FFmpeg revision by prefixing the GyanD tag with n.
+For example, the 9.0.1 provider release explicitly links upstream commit
+bf1b838f2a, resolved in the reference records to
+bf1b838f2ab88b4f8fd83443325c782ea0e0f7fa:
+https://github.com/GyanD/codexffmpeg/releases/tag/9.0.1
+
+Run the selected ffmpeg.exe with -version to see its build configuration and
+with -L to see its license. The same commands apply to ffprobe.exe. The
+provider's build/dependency documentation and the actual upstream licensing
+and corresponding-source information must also be consulted for external
+libraries and build materials. An FFmpeg source tree alone does not establish
+that every corresponding-source requirement for a complete build is met.
+If the exact source relation is unavailable, seek verified provenance from
+the provider; do not substitute another version's sources. See
+THIRD-PARTY-SOURCES.md for preserved exact source archives and hashes.
+
+PART III - Local Data Storage and Network Connections
+====================================================
+
+This part is informational. It is not contractual consent or general explicit
+consent under Turkey's Personal Data Protection Law (KVKK). Installer
+acceptance and the optional automatic-update preference are separate matters.
+
+BITIG is local-first. Its SQLite library.db and managed media are stored under
+the OS-resolved application local data directory (AppLocalData). It uses
+media/ for saved media, thumbnails/ for artwork, temp/ for work in progress,
+tools/ for managed media tools, and logs/ for local diagnostic logs. The
+installer update preference is stored in installer-preferences.json there.
+Interface preferences, including the application tool-update choice, are
+stored in WebView2 localStorage.
+
+Media URLs and metadata can appear in local records. URL storage filtering
+removes fragments and attempts to remove specified sensitive query parameters,
+such as tokens and signatures. It does not guarantee removal of all personal
+or confidential information from URLs or metadata.
+
+BITIG contacts GitHub for required tool provisioning when verified managed
+tools are unavailable, and for tool checks/downloads initiated by you or
+authorized through the optional automatic-update preference. Media analysis
+or downloading initiated by you connects the local media tool to third-party
+media platforms and associated content services. Those services can see your
+IP address and normal connection/request information, including the media
+resource requested. Their data processing is governed by their own practices.
+
+The application source examined for this document contains no telemetry or
+analytics feature and no developer-operated server for collecting your media
+data. This describes BITIG's application code, not a guarantee about every
+third-party tool, service, Windows component, or network connection. Local
+storage and URL filtering are not absolute privacy or security guarantees.

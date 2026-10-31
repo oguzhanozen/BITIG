@@ -18,13 +18,16 @@
     "test": "vitest run",
     "sidecars:fetch": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fetch-sidecars.ps1",
     "sidecars:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-sidecars.ps1",
+    "installer:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-sidecars.ps1 -SkipBinaries -VerifyInstallerPackage",
+    "test:release-verification": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-release-verification.ps1",
+    "test:nsis": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-nsis-flow.ps1",
     "sources:fetch": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fetch-corresponding-sources.ps1",
     "licenses:rust": "cargo about generate scripts/rust-licenses.hbs --config about.toml --manifest-path src-tauri/Cargo.toml --locked --output-file licenses/Rust-THIRD-PARTY-NOTICES.txt",
-    "tauri:build": "npm run sidecars:verify && tauri build --config src-tauri/tauri.release.conf.json",
+    "tauri:build": "npm run sidecars:verify -- -SkipBinaries && tauri build --config src-tauri/tauri.release.conf.json && npm run installer:verify",
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/api": "2.12.4",
     "@tauri-apps/plugin-dialog": "2.7.2",
     "@tauri-apps/plugin-opener": "2.5.4",
     "react": "19.2.8",
@@ -32,7 +35,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@tauri-apps/cli": "2.11.4",
+    "@tauri-apps/cli": "2.12.4",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
     "@vitejs/plugin-react": "6.0.5",

@@ -50,7 +50,7 @@ export function AppSelect({ value, options, onChange, ariaLabel, disabled = fals
 
   function openList(preferredIndex = selectedIndex) {
     if (disabled || options.every((option) => option.disabled)) return;
-    setPortalTarget(rootRef.current?.closest("dialog") ?? document.body);
+    setPortalTarget(rootRef.current?.closest("[data-media-player]") ?? rootRef.current?.closest("dialog") ?? document.body);
     setPosition(null);
     setActiveIndex(preferredIndex >= 0 && !options[preferredIndex]?.disabled ? preferredIndex : firstEnabledIndex());
     setOpen(true);

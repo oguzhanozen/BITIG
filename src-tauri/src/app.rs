@@ -29,7 +29,7 @@ impl AppState {
         let pool = database::connect(&paths.database).await?;
         database::recover_interrupted_downloads(&pool).await?;
         paths.cleanup_stale_temp().await?;
-        let tools = ToolPaths::discover_and_verify(&paths.tools).await?;
+        let (tools, inventory) = ToolPaths::discover_with_inventory(&paths.tools).await?;
         let tool_status = ToolStatusService::new(tools.versions.clone());
         let tool_updates = ToolUpdateService::new(
             paths.tools.clone(),
@@ -37,6 +37,7 @@ impl AppState {
             tools.clone(),
             tool_status.clone(),
         );
+        let _ = tool_updates.inspect_tool_cleanup(inventory).await;
 
         let folders = Arc::new(FolderRepository::new(pool.clone()));
         let media = Arc::new(MediaRepository::new(pool.clone()));

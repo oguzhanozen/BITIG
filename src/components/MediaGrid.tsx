@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import type { Folder, Media } from "../types/domain";
-import { formatDuration } from "../lib/format";
+import { buildFolderOptions, formatDuration } from "../lib/format";
 import { backend, displayError } from "../services/backend";
 import type { Confirmation } from "./ConfirmDialog";
 import { AppSelect } from "./AppSelect";
@@ -46,8 +46,10 @@ function filterCollection(items: Media[], filter: CollectionFilter): Media[] {
 
 export function MediaGrid({ items, folders, loading, folderName, onAddUrl, onSelect, onChanged, requestConfirmation }: MediaGridProps) {
   const [view, setView] = useState<CollectionView>(() => {
-    const saved = localStorage.getItem("bitig.collectionView");
-    return isCollectionView(saved) ? saved : "cards";
+    try {
+      const saved = localStorage.getItem("bitig.collectionView");
+      return isCollectionView(saved) ? saved : "cards";
+    } catch { return "cards"; }
   });
   const [filter, setFilter] = useState<CollectionFilter>("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -56,6 +58,7 @@ export function MediaGrid({ items, folders, loading, folderName, onAddUrl, onSel
   const [error, setError] = useState<string | null>(null);
 
   const visibleItems = useMemo(() => filterCollection(items, filter), [filter, items]);
+  const folderOptions = useMemo(() => buildFolderOptions(folders), [folders]);
   const folderNames = useMemo(() => new Map(folders.map((folder) => [folder.id, folder.name])), [folders]);
   const selectedItems = items.filter((item) => selectedIds.includes(item.id));
   const allVisibleSelected = visibleItems.length > 0 && visibleItems.every((item) => selectedIds.includes(item.id));
@@ -78,7 +81,7 @@ export function MediaGrid({ items, folders, loading, folderName, onAddUrl, onSel
 
   function chooseView(next: CollectionView) {
     setView(next);
-    localStorage.setItem("bitig.collectionView", next);
+    try { localStorage.setItem("bitig.collectionView", next); } catch { /* Keep view changes usable without storage. */ }
   }
 
   function toggleSelected(id: string) {
@@ -165,7 +168,7 @@ export function MediaGrid({ items, folders, loading, folderName, onAddUrl, onSel
         {selectedItems.length > 0 && (
           <>
             <strong>{selectedItems.length} SELECTED</strong>
-            <AppSelect ariaLabel="Move selected media" value="" disabled={busy} options={[{ value: "", label: "MOVE TO…", disabled: true }, { value: "__root__", label: "All media" }, ...folders.map((folder) => ({ value: folder.id, label: folder.name }))]} onChange={(next) => void move(selectedItems.map((item) => item.id), next)} />
+            <AppSelect ariaLabel="Move selected media" value="" disabled={busy} options={[{ value: "", label: "MOVE TO…", disabled: true }, { value: "__root__", label: "All media" }, ...folderOptions]} onChange={(next) => void move(selectedItems.map((item) => item.id), next)} />
             <button className="bulk-delete" type="button" disabled={busy} onClick={() => void remove(selectedItems)}>DELETE</button>
             <button className="clear-selection" type="button" onClick={() => setSelectedIds([])}>CLEAR</button>
           </>
@@ -196,7 +199,7 @@ export function MediaGrid({ items, folders, loading, folderName, onAddUrl, onSel
                 <button className="card-menu-trigger" type="button" onClick={() => setOpenMenuId((current) => current === item.id ? null : item.id)} aria-label={`Actions for ${item.title}`} aria-expanded={openMenuId === item.id}>⋮</button>
                 {openMenuId === item.id && <div className="card-action-menu">
                   <label>MOVE TO
-                    <AppSelect ariaLabel={`Move ${item.title}`} value="" disabled={busy} options={[{ value: "", label: "Choose folder…", disabled: true }, { value: "__root__", label: "All media" }, ...folders.map((folder) => ({ value: folder.id, label: folder.name }))]} onChange={(next) => { setOpenMenuId(null); void move([item.id], next); }} />
+                    <AppSelect ariaLabel={`Move ${item.title}`} value="" disabled={busy} options={[{ value: "", label: "Choose folder…", disabled: true }, { value: "__root__", label: "All media" }, ...folderOptions]} onChange={(next) => { setOpenMenuId(null); void move([item.id], next); }} />
                   </label>
                   <button type="button" disabled={busy} onClick={() => { setOpenMenuId(null); void remove([item]); }}>DELETE FROM BITIG</button>
                 </div>}

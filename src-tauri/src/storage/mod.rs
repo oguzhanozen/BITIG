@@ -7,6 +7,63 @@ use tauri::{AppHandle, Manager};
 
 use crate::errors::{AppError, AppResult};
 
+mod installer_preferences;
+pub(crate) use installer_preferences::{
+    InstallerToolPreference, read_installer_tool_preference, write_installer_tool_preference,
+};
+
+pub(crate) fn is_link(metadata: &std::fs::Metadata) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        metadata.file_attributes() & 0x400 != 0
+    }
+    #[cfg(not(windows))]
+    {
+        metadata.file_type().is_symlink()
+    }
+}
+
+pub(crate) fn reject_linked_directories(path: &Path) -> AppResult<()> {
+    for ancestor in path.ancestors() {
+        match std::fs::symlink_metadata(ancestor) {
+            Ok(metadata) if !metadata.is_dir() || is_link(&metadata) => {
+                return Err(AppError::UnsafePath);
+            }
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn ensure_real_directory(path: &Path) -> AppResult<()> {
+    reject_linked_directories(path)?;
+    std::fs::create_dir_all(path)?;
+    reject_linked_directories(path)
+}
+
+pub(crate) fn open_regular_file(path: &Path) -> AppResult<std::fs::File> {
+    let metadata = std::fs::symlink_metadata(path)?;
+    if !metadata.is_file() || is_link(&metadata) {
+        return Err(AppError::UnsafePath);
+    }
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        options.custom_flags(0x00200000); // Open the reparse point itself if the file changes after inspection.
+    }
+    let file = options.open(path)?;
+    let metadata = file.metadata()?;
+    if !metadata.is_file() || is_link(&metadata) {
+        return Err(AppError::UnsafePath);
+    }
+    Ok(file)
+}
+
 #[derive(Clone, Debug)]
 pub struct AppPaths {
     pub root: Arc<PathBuf>,
@@ -93,6 +150,26 @@ fn is_temp_job_name(name: &str) -> bool {
 mod tests {
     use super::{AppPaths, is_temp_job_name};
     use std::{path::PathBuf, sync::Arc};
+
+    #[test]
+    fn installer_preference_round_trips_without_creating_media_or_database() {
+        let directory = tempfile::tempdir().unwrap();
+        assert_eq!(
+            super::read_installer_tool_preference(directory.path()).unwrap(),
+            None
+        );
+        for preference in [
+            super::InstallerToolPreference::Enabled,
+            super::InstallerToolPreference::Disabled,
+        ] {
+            super::write_installer_tool_preference(directory.path(), preference).unwrap();
+            assert_eq!(
+                super::read_installer_tool_preference(directory.path()).unwrap(),
+                Some(preference)
+            );
+        }
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
 
     fn paths() -> AppPaths {
         let root = PathBuf::from("managed");

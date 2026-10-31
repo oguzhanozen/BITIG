@@ -3,7 +3,7 @@ BITIG — Node Runtime Third-Party Notices
 
 This notice covers the JavaScript packages shipped in the BITIG frontend:
 
-- @tauri-apps/api 2.11.1
+- @tauri-apps/api 2.12.4
 - @tauri-apps/plugin-dialog 2.7.2
 - @tauri-apps/plugin-opener 2.5.4
 - react 19.2.8

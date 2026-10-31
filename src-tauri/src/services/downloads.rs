@@ -321,6 +321,7 @@ impl DownloadManager {
             .run_cancellable_streaming(
                 ProcessSpec {
                     program: self.inner.yt_dlp.clone(),
+                    is_yt_dlp: true,
                     args,
                     timeout: Duration::from_secs(6 * 60 * 60),
                     stdout_limit: 4 * 1024 * 1024,
@@ -367,6 +368,7 @@ impl DownloadManager {
             .run_cancellable(
                 ProcessSpec {
                     program: self.inner.ffprobe.clone(),
+                    is_yt_dlp: false,
                     args,
                     timeout: Duration::from_secs(30),
                     stdout_limit: 1024 * 1024,

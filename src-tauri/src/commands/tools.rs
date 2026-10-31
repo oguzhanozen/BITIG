@@ -1,10 +1,24 @@
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
     app::AppState,
     domain::{ToolStatusReport, ToolUpdateResult},
     errors::AppResult,
+    storage::{InstallerToolPreference, read_installer_tool_preference},
 };
+
+#[tauri::command]
+pub async fn get_installer_tool_preference(
+    app: AppHandle,
+) -> AppResult<Option<InstallerToolPreference>> {
+    let root = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|error| crate::errors::AppError::Storage(error.to_string()))?;
+    tokio::task::spawn_blocking(move || read_installer_tool_preference(&root))
+        .await
+        .map_err(|error| crate::errors::AppError::Storage(error.to_string()))?
+}
 
 #[tauri::command]
 pub async fn get_tool_status(

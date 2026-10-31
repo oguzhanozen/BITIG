@@ -5,10 +5,12 @@ interface SidePanelProps {
   eyebrow?: string;
   open: boolean;
   onClose: () => void;
+  onCancel?: () => void;
+  className?: string;
   children: ReactNode;
 }
 
-export function SidePanel({ title, eyebrow = "BITIG", open, onClose, children }: SidePanelProps) {
+export function SidePanel({ title, eyebrow = "BITIG", open, onClose, onCancel, className = "", children }: SidePanelProps) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -17,7 +19,7 @@ export function SidePanel({ title, eyebrow = "BITIG", open, onClose, children }:
   }, [open]);
 
   return (
-    <dialog ref={ref} className="side-panel" onCancel={onClose} onClose={onClose}>
+    <dialog ref={ref} className={`side-panel ${className}`} onCancel={(event) => { event.preventDefault(); (onCancel ?? onClose)(); }} onClose={onClose}>
       <div className="side-panel-frame">
         <div className="side-panel-heading">
           <div><p className="eyebrow">{eyebrow}</p><h2>{title}</h2></div>

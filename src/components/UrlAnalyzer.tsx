@@ -1,12 +1,14 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { backend, displayError } from "../services/backend";
 import type { DownloadJob, Folder, MediaAnalysis } from "../types/domain";
-import { formatDuration } from "../lib/format";
+import { buildFolderOptions, formatDuration } from "../lib/format";
+import { folderNameError } from "../lib/folders";
 import { AppSelect } from "./AppSelect";
 
 interface UrlAnalyzerProps {
   folders: Folder[];
   initialUrl?: string;
+  onCreateFolder: (name: string, parentId: string | null) => Promise<Folder>;
   onStarted: (job: DownloadJob) => void;
 }
 
@@ -22,7 +24,7 @@ function formatBytes(bytes: number | null): string {
   return `~${value.toFixed(value >= 10 ? 0 : 1)} ${units[unit]}`;
 }
 
-export function UrlAnalyzer({ folders, initialUrl = "", onStarted }: UrlAnalyzerProps) {
+export function UrlAnalyzer({ folders, initialUrl = "", onCreateFolder, onStarted }: UrlAnalyzerProps) {
   const [url, setUrl] = useState(initialUrl);
   const [analysis, setAnalysis] = useState<MediaAnalysis | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -31,11 +33,53 @@ export function UrlAnalyzer({ folders, initialUrl = "", onStarted }: UrlAnalyzer
   const [loading, setLoading] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [folderCreatorOpen, setFolderCreatorOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [folderError, setFolderError] = useState<string | null>(null);
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const creatingFolderRef = useRef(false);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+  const folderButtonRef = useRef<HTMLButtonElement>(null);
+  const folderOptions = useMemo(() => buildFolderOptions(folders), [folders]);
 
   const selectedOption = useMemo(
     () => analysis?.options.find((option) => option.id === selectedId) ?? null,
     [analysis, selectedId],
   );
+
+  useEffect(() => {
+    if (folderCreatorOpen) folderInputRef.current?.focus();
+  }, [folderCreatorOpen]);
+
+  function closeFolderCreator() {
+    setFolderCreatorOpen(false);
+    setNewFolderName("");
+    setFolderError(null);
+    window.requestAnimationFrame(() => folderButtonRef.current?.focus());
+  }
+
+  async function createFolder(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (creatingFolderRef.current || loading || starting) return;
+    const validationError = folderNameError(newFolderName);
+    setFolderError(validationError);
+    if (validationError) {
+      folderInputRef.current?.focus();
+      return;
+    }
+    creatingFolderRef.current = true;
+    setCreatingFolder(true);
+    try {
+      const folder = await onCreateFolder(newFolderName.trim(), folderId || null);
+      setFolderId(folder.id);
+      closeFolderCreator();
+    } catch (caught) {
+      setFolderError(displayError(caught, "Folder could not be created."));
+    } finally {
+      creatingFolderRef.current = false;
+      setCreatingFolder(false);
+    }
+  }
 
   async function analyze(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,7 +103,7 @@ export function UrlAnalyzer({ folders, initialUrl = "", onStarted }: UrlAnalyzer
   }
 
   async function startDownload() {
-    if (!analysis || !selectedOption || !name.trim()) return;
+    if (!analysis || !selectedOption || !name.trim() || creatingFolderRef.current) return;
     setStarting(true);
     setError(null);
     try {
@@ -75,6 +119,9 @@ export function UrlAnalyzer({ folders, initialUrl = "", onStarted }: UrlAnalyzer
       setName("");
       setFolderId("");
       setUrl("");
+      setFolderCreatorOpen(false);
+      setNewFolderName("");
+      setFolderError(null);
     } catch (caught) {
       setError(displayError(caught, "The download could not be started."));
     } finally {
@@ -94,8 +141,8 @@ export function UrlAnalyzer({ folders, initialUrl = "", onStarted }: UrlAnalyzer
       <form className="url-form" onSubmit={(event) => void analyze(event)} autoComplete="off" noValidate>
         <label className="sr-only" htmlFor="media-url">Media URL</label>
         <span aria-hidden="true">↗</span>
-        <input id="media-url" type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="Paste a media URL…" autoComplete="off" required disabled={loading || starting} />
-        <button className="primary-button" type="submit" disabled={loading || starting || !url.trim()}>
+        <input id="media-url" type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="Paste a media URL…" autoComplete="off" required disabled={loading || starting || creatingFolder} />
+        <button className="primary-button" type="submit" disabled={loading || starting || creatingFolder || !url.trim()}>
           {loading ? "CHECKING…" : "ANALYZE"}
         </button>
       </form>
@@ -116,7 +163,7 @@ export function UrlAnalyzer({ folders, initialUrl = "", onStarted }: UrlAnalyzer
               <h2>{analysis.title}</h2>
               <span>{analysis.creator ?? "Unknown creator"} · {formatDuration(analysis.durationMs)}</span>
             </div>
-            <button className="quiet-button" type="button" onClick={() => setAnalysis(null)}>Clear</button>
+            <button className="quiet-button" type="button" disabled={creatingFolder} onClick={() => { setAnalysis(null); closeFolderCreator(); }}>Clear</button>
           </div>
 
           <div className="option-columns">
@@ -144,9 +191,31 @@ export function UrlAnalyzer({ folders, initialUrl = "", onStarted }: UrlAnalyzer
 
           <div className="download-fields">
             <label htmlFor="download-name">Name<input id="download-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={240} autoComplete="off" /></label>
-            <label htmlFor="download-folder">Folder<AppSelect id="download-folder" ariaLabel="Folder" value={folderId} options={[{ value: "", label: "All media" }, ...folders.map((folder) => ({ value: folder.id, label: folder.name }))]} onChange={setFolderId} /></label>
-            <button className="primary-button start-download" type="button" disabled={!selectedOption || !name.trim() || starting} onClick={() => void startDownload()}>{starting ? "STARTING…" : "DOWNLOAD"}</button>
+            <div className="download-folder-field">
+              <label htmlFor="download-folder">Folder<AppSelect id="download-folder" ariaLabel="Folder" value={folderId} disabled={creatingFolder} options={[{ value: "", label: "All media" }, ...folderOptions]} onChange={setFolderId} /></label>
+              <button ref={folderButtonRef} className="secondary-button" type="button" disabled={loading || starting || creatingFolder} aria-expanded={folderCreatorOpen} aria-controls="download-folder-creator" onClick={() => setFolderCreatorOpen(true)}>+ NEW FOLDER</button>
+            </div>
+            <button className="primary-button start-download" type="button" disabled={!selectedOption || !name.trim() || starting || creatingFolder} onClick={() => void startDownload()}>{starting ? "STARTING…" : "DOWNLOAD"}</button>
           </div>
+          {folderCreatorOpen && (
+            <form id="download-folder-creator" className="download-folder-creator" aria-label="Create download folder" aria-busy={creatingFolder} autoComplete="off" noValidate onSubmit={(event) => void createFolder(event)} onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                event.stopPropagation();
+                if (!creatingFolderRef.current) closeFolderCreator();
+              }
+            }}>
+              <p className="field-help" id="download-folder-parent">Create in: <strong>{folderOptions.find((option) => option.value === folderId)?.label ?? "All media"}</strong>. Up to 120 characters.</p>
+              <label htmlFor="download-new-folder-name">Folder name
+                <input ref={folderInputRef} id="download-new-folder-name" className="text-input" value={newFolderName} onChange={(event) => { setNewFolderName(event.target.value); setFolderError(null); }} onBlur={() => setFolderError(folderNameError(newFolderName))} disabled={creatingFolder || loading || starting} required aria-invalid={Boolean(folderError)} aria-describedby={`download-folder-parent${folderError ? " download-folder-error" : ""}`} />
+              </label>
+              <div className="download-folder-actions">
+                <button className="primary-button" type="submit" disabled={creatingFolder || loading || starting}>{creatingFolder ? "CREATING…" : "CREATE"}</button>
+                <button className="secondary-button" type="button" disabled={creatingFolder} onClick={closeFolderCreator}>CANCEL</button>
+              </div>
+              {folderError && <p className="form-error" id="download-folder-error" role="alert">{folderError}</p>}
+            </form>
+          )}
         </div>
       )}
     </section>

@@ -1,3 +1,37 @@
+import type { Folder } from "../types/domain";
+
+export function buildFolderOptions(folders: readonly Folder[]): { value: string; label: string }[] {
+  const folderIds = new Set(folders.map((folder) => folder.id));
+  const children = new Map<string | null, Folder[]>();
+  for (const folder of folders) {
+    const siblings = children.get(folder.parentId) ?? [];
+    siblings.push(folder);
+    children.set(folder.parentId, siblings);
+  }
+
+  const options: { value: string; label: string }[] = [];
+  const visited = new Set<string>();
+  function visit(start: Folder) {
+    const stack = [{ folder: start, label: start.name }];
+    while (stack.length) {
+      const { folder, label } = stack.pop()!;
+      if (visited.has(folder.id)) continue;
+      visited.add(folder.id);
+      options.push({ value: folder.id, label });
+      for (const child of [...(children.get(folder.id) ?? [])].reverse()) {
+        stack.push({ folder: child, label: `${label} / ${child.name}` });
+      }
+    }
+  }
+
+  for (const folder of folders) {
+    if (folder.parentId === null || !folderIds.has(folder.parentId)) visit(folder);
+  }
+  // Keep cyclic folders selectable without visiting any ID twice.
+  for (const folder of folders) visit(folder);
+  return options;
+}
+
 export function formatDuration(durationMs: number | null): string {
   if (durationMs === null || !Number.isFinite(durationMs) || durationMs < 0) return "—";
   const totalSeconds = Math.floor(durationMs / 1000);

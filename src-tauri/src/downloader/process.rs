@@ -11,6 +11,7 @@ use crate::errors::{AppError, AppResult};
 
 pub struct ProcessSpec {
     pub program: PathBuf,
+    pub is_yt_dlp: bool,
     pub args: Vec<OsString>,
     pub timeout: Duration,
     pub stdout_limit: u64,
@@ -75,6 +76,9 @@ impl BoundedProcessRunner {
         cancellation: CancellationToken,
         lines: Option<mpsc::UnboundedSender<String>>,
     ) -> AppResult<ProcessOutput> {
+        if spec.is_yt_dlp {
+            super::tools::verify_yt_dlp(&spec.program).await?;
+        }
         let mut command = Command::new(&spec.program);
         command
             .args(&spec.args)
@@ -187,6 +191,7 @@ mod tests {
     fn slow_process(timeout: Duration) -> ProcessSpec {
         ProcessSpec {
             program: PathBuf::from("ping.exe"),
+            is_yt_dlp: false,
             args: ["-n", "6", "127.0.0.1"]
                 .into_iter()
                 .map(OsString::from)

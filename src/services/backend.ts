@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AppError, DownloadJob, Folder, Media, MediaAnalysis, ToolStatusReport, ToolUpdateResult } from "../types/domain";
+import type { AppError, DownloadJob, Folder, InstallerToolPreference, Media, MediaAnalysis, ToolStatusReport, ToolUpdateResult } from "../types/domain";
 
 export type FolderDeleteMode = "move_contents" | "delete_contents";
 
@@ -32,6 +32,7 @@ const errorMessages: Record<string, string> = {
 };
 
 const commandErrorMessages: Record<string, Record<string, string>> = {
+  install_tool_updates: { conflict: "A tool update is already in progress." },
   create_folder: {
     conflict: "A folder with this name already exists here.",
     validation: "Enter a folder name of up to 120 characters.",
@@ -68,6 +69,7 @@ async function call<T>(command: string, args?: Record<string, unknown>): Promise
 }
 
 export const backend = {
+  getInstallerToolPreference: () => call<InstallerToolPreference | null>("get_installer_tool_preference"),
   analyzeUrl: (url: string) => call<MediaAnalysis>("analyze_url", { url }),
   startDownload: (input: { analysisId: string; optionId: string; title: string; folderId: string | null }) =>
     call<DownloadJob>("start_download", { input }),
